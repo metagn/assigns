@@ -81,13 +81,12 @@ test "custom":
     if (isCallCommandLen2 and (lhs[0].eqIdent"ok" or lhs[0].eqIdent"Ok")) or
        (lhs.kind == nnkPrefix and lhs[0].eqIdent"?"):
         let tmp = genSym(nskLet, "tmpResult")
-        result = newStmtList(
-          newLetStmt(tmp, rhs),
-          quote do:
-            if not `tmp`.success:
-              raise `tmp`.error,
-          openDefine(lhs[1], newDotExpr(tmp, ident"value"))
-        )
+        let asgn = openDefine(lhs[1], newDotExpr(tmp, ident"value"))
+        result = quote do:
+          let `tmp` = `rhs`
+          if not `tmp`.success:
+            raise `tmp`.error
+          `asgn`
     elif isCallCommandLen2 and (lhs[0].eqIdent"err" or lhs[0].eqIdent"Err"):
       result = openDefine(lhs[1], newDotExpr(rhs, ident"error"))
     else:

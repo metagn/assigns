@@ -53,14 +53,13 @@ import macros
 macro define[T](lhs; rhs: Result[T]): untyped =
   if lhs.kind == nnkPrefix and lhs[0].eqIdent"?":
     let tmp = genSym(nskLet, "tmpResult")
-    result = newStmtList(
-      newLetStmt(tmp, rhs),
-      quote do:
-        if not `tmp`.success:
-          raise `tmp`.error,
-      # openDefine means use any custom overload of define for the rest
-      openDefine(lhs[1], newDotExpr(tmp, ident"value"))
-    )
+    # openDefine means use any custom overload of define for the rest
+    let asgn = openDefine(lhs[1], newDotExpr(tmp, ident"value"))
+    result = quote do:
+      let `tmp` = `rhs`
+      if not `tmp`.success:
+        raise `tmp`.error
+      `asgn`
   else:
     # defaultDefine is a proc(NimNode, NimNode): NimNode and is what is applied by default if no overload is found
     result = defaultDefine(lhs, rhs)
