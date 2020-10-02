@@ -12,10 +12,12 @@ import definesugar
 def:
   a = 3
   mut x = 5
+  y = var 5 # alternative
 x = 6
 
 a := 3
 mut(x) := 5 # := has different precedence than =, you have to use parentheses
+y := var 5 # alternative
 x = 6
 
 # tuples:
@@ -24,6 +26,12 @@ x = 6
 # named tuples/generic field access:
 type Person = tuple[name: string, age: int]
 (age: a, name: n) := ("John Smith", 30).Person
+
+# spreading:
+(a, *bc, d) := (1, 2, 3, 4)
+# (a, bc, d) == (1, (2, 3), 4)
+(a, *bc, d) := "abcd"
+# (a, bc, d) == ('a', "bc", 'd')
 
 # aliases:
 (a, b) as c := (1, 2)
@@ -38,7 +46,7 @@ import options
 let opt = some(4)
 def:
   Some a = opt
-Some(a) = opt
+Some(a) := opt
 echo a # 4
 
 # custom types:
@@ -72,4 +80,3 @@ echo x # 5
 Not implemented yet:
 
 * Exported variables, ie `let a* = 3`. Don't know how to do this with regular Nim syntax since `export` is also a keyword
-* Splatting in tuples, like `(a, *bc, d) := (1, 2, 3, 4)`. Very doable, I know how to do this
