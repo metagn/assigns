@@ -16,7 +16,7 @@ template openDefine*(lhs, rhs: NimNode, dk: DefineKind = dkLet): NimNode =
 # needed for openDefine to work
 proc defaultDefine*(lhs, rhs: NimNode, kind = dkLet): NimNode
 
-macro define*[T](lhs; rhs: T, kind: static[DefineKind] = dkLet): untyped =
+macro define*[T](lhs; rhs: T, kind: static[DefineKind]): untyped =
   result = defaultDefine(lhs, rhs, kind)
 
 proc defaultDefine*(lhs, rhs: NimNode, kind = dkLet): NimNode =
@@ -83,7 +83,7 @@ macro define*[T](lhs; rhs: Option[T], kind: static[DefineKind] = dkLet): untyped
     result = defaultDefine(lhs, rhs, kind)
 
 template implementDefine*(T; body) {.dirty.} =
-  macro define(lhs; rhs: T, kind: static[DefineKind] = dkLet): untyped =
+  macro define(lhs; rhs: T, kind: static[DefineKind]): untyped =
     template open(a, b: NimNode): NimNode {.used.} = openDefine(a, b, kind)
     template open(a, b: NimNode, isReallyVar: static[bool]): NimNode {.used.} = openDefine(a, b, isReallyVar)
     template default(a, b: NimNode): NimNode {.used.} = defaultDefine(a, b, kind)
@@ -91,7 +91,7 @@ template implementDefine*(T; body) {.dirty.} =
     body
 
 template implementDefineExported*(T; body) {.dirty.} =
-  macro define*(lhs; rhs: T, kind: static[DefineKind] = dkLet): untyped =
+  macro define*(lhs; rhs: T, kind: static[DefineKind]): untyped =
     template open(a, b: NimNode): NimNode {.used.} = openDefine(a, b, kind)
     template open(a, b: NimNode, isReallyVar: static[bool]): NimNode {.used.} = openDefine(a, b, isReallyVar)
     template default(a, b: NimNode): NimNode {.used.} = defaultDefine(a, b, kind)

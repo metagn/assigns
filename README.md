@@ -58,7 +58,7 @@ type Result[T] = object
     error: ref Exception
 
 import macros
-macro define[T](lhs; rhs: Result[T], kind: static[DefineKind] = dkLet): untyped =
+macro define[T](lhs; rhs: Result[T], kind: static[DefineKind]): untyped =
   if lhs.kind == nnkPrefix and lhs[0].eqIdent"?":
     let tmp = genSym(nskLet, "tmpResult")
     # openDefine means use any custom overload of define for the rest

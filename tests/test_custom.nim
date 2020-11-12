@@ -8,7 +8,7 @@ test "custom Result[T]":
     else:
       error: ref Exception
 
-  macro define[T](lhs; rhs: Result[T], kind: static[DefineKind] = dkLet): untyped =
+  macro define[T](lhs; rhs: Result[T], kind: static[DefineKind]): untyped =
     let isCallCommandLen2 = lhs.kind in {nnkCall, nnkCommand} and lhs.len == 2
     if (isCallCommandLen2 and (lhs[0].eqIdent"ok" or lhs[0].eqIdent"Ok")) or
        (lhs.kind == nnkPrefix and lhs[0].eqIdent"?"):
@@ -36,7 +36,7 @@ test "custom Result[T]":
 import options
 
 test "redefined for Option[T]":
-  macro define[T](lhs; rhs: Option[T], kind: static[DefineKind] = dkLet): untyped =
+  macro define[T](lhs; rhs: Option[T], kind: static[DefineKind]): untyped =
     if (lhs.kind in {nnkCall, nnkCommand} and lhs.len == 2 and (lhs[0].eqIdent"some" or lhs[0].eqIdent"Some")) or
        (lhs.kind == nnkPrefix and lhs[0].eqIdent"?"):
       result = openDefine(lhs[1], newCall(bindSym"get", rhs), kind)
