@@ -40,13 +40,13 @@ a as mut(b) := c # => let temp = c; let a = temp; var b = temp
 1 := 2 # => doAssert 1 == 2
 
 # collection unpacking (works for anything if it can be indexed with integers):
-(a, b, c) = d
+(a, b, c) := d
 
 # collection spreading (works if you can do d[i], d[i..^j] and d[^i]):
-(a, *b, c) = d
+(a, *b, c) := d
 
 # empty tuple unpacking, discards right hand side:
-() = a
+() := a
 
 # named unpacking, works on anything:
 (prop1: a, prop2: b) := c
