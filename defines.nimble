@@ -2,7 +2,7 @@
 
 version       = "0.3.0"
 author        = "hlaaftana"
-description   = "sugar for defining variables"
+description   = "syntax sugar for local definitions"
 license       = "MIT"
 srcDir        = "src"
 
