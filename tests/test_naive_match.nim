@@ -1,6 +1,6 @@
-import unittest, definesugar, macros
+import unittest, defines, macros
 
-macro match*(val: untyped, branches: varargs[untyped]): untyped =
+macro match(val: untyped, branches: varargs[untyped]): untyped =
   result = newEmptyNode()
   for i in countdown(branches.len - 1, 0):
     let b = branches[i]

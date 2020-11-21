@@ -1,4 +1,4 @@
-import unittest, definesugar
+import unittest, defines
 
 test "basic def":
   def:
@@ -15,6 +15,16 @@ test "basic def":
   y = 6
   check y == 6
 
+test "def with scoped block":
+  var executed = false
+  def:
+    scoped = "abc"
+  do:
+    check scoped == "abc"
+    executed = true
+  check not declared(scoped)
+  check executed
+
 test "basic :=":
   a := 3
   mut(x) := 5
@@ -29,6 +39,14 @@ test "basic :=":
   y = 6
   check y == 6
 
+test "pragmas":
+  proc foo: int =
+    x {.global.} := var 0
+    inc x
+    result = x
+  check foo() == 1
+  check foo() == 2
+
 import options
 test "options":
   def:
@@ -38,10 +56,11 @@ test "options":
   Some(opt2) := some 4
   check opt2 == 4
 
-test "tuple":
+test "basic tuple":
   (a, b, c) := (1, 2, 3)
   check (a, b, c) == (1, 2, 3)
 
+test "empty tuple acts like discard":
   var modified = false
   () := (modified = true; 0)
   check modified

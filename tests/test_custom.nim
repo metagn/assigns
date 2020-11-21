@@ -1,4 +1,4 @@
-import unittest, definesugar, macros
+import unittest, defines, macros
 
 test "custom Result[T]":
   type Result[T] = object
