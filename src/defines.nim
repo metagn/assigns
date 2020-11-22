@@ -46,23 +46,25 @@
 ##   # empty tuple unpacking, discards right hand side:
 ##   () := a
 ##   
-##   # named unpacking, works on anything:
+##   # named unpacking, works on anything (prop1 and prop2 must be identifiers):
 ##   (prop1: a, prop2: b) := c
+## 
+##   # unpacking by given index:
+##   (0..4: hello, 6..^1: world) := "hello world"
+##   import json
+##   ("name": name, "age": age) := %*{"name": "John", "age": 30}
+##   
+##   # conversion to type:
+##   a of int := 4.0
+##   type Obj = object of RootObj
+##   type Obj2 = object of Obj
+##   let x: Obj = Obj2()
+##   y of Obj2 := x
 ##   
 ##   # option unpacking, only custom type implementation that comes with the library:
 ##   Some(a) := b
 ##   some(a) := b
 ##   def: some a = b
-## 
-## Custom definitions
-## ==================
-## 
-## A large and important feature in this package is that you can overload definitions for custom types.
-## The `define` macro in this module is overloadable, and the `openDefine` template creates a
-## NimNode that calls a forced open symbol of `define` with the AST of the left hand side,
-## AST of the right hand side, and the flag of whether or not it is a `let`, `var`, or mutating
-## assignment. You can use the `implementDefine` and `implementDefineExported` templates as a
-## shorthand for declaring these overloads.
 ## 
 ## Note about tuple spreading
 ## """"""""""""""""""""""""""
@@ -76,6 +78,16 @@
 ## that we don't need in `sliceutils/tuples` as well, not to mention that `sliceutils` does not support versions
 ## below 1.4. I hope that if you are going to be using both modules, the extra inclusion of the file `tupleindex`
 ## will not be too much of an inconvenience.
+## 
+## Custom definitions
+## ==================
+## 
+## A large and important feature in this package is that you can overload definitions for custom types.
+## The `define` macro in this module is overloadable, and the `openDefine` template creates a
+## NimNode that calls a forced open symbol of `define` with the AST of the left hand side,
+## AST of the right hand side, and the flag of whether or not it is a `let`, `var`, or mutating
+## assignment. You can use the `implementDefine` and `implementDefineExported` templates as a
+## shorthand for declaring these overloads.
 
 import macros, options
 
@@ -113,7 +125,8 @@ proc defaultDefine*(lhs, rhs: NimNode, kind = dkLet): NimNode =
     of dkVar: newVarStmt(a, b)
     of dkLet: newLetStmt(a, b)
     of dkAssign: newAssignment(a, b)
-  if lhs.kind == nnkPar:
+  case lhs.kind
+  of nnkPar, nnkTupleConstr:
     let tmp = genSym(nskLet, "tmpPar")
     result = newStmtList(newLetStmt(
       if lhs.len == 0:
@@ -136,20 +149,25 @@ proc defaultDefine*(lhs, rhs: NimNode, kind = dkLet): NimNode =
         toIndex.add(name[1])
       else:
         toIndex.add(name)
-    for i, x in toIndex:
-      let index =
-        if spreadIndex == -1 or i < spreadIndex:
-          newLit(i)
-        elif i == spreadIndex:
-          infix(newLit i, "..", prefix(newLit(toIndex.len - i), "^"))
-        else:
-          prefix(newLit(toIndex.len - i), "^")
-      let o = openDefine(x, newTree(nnkBracketExpr, tmp, index), kind)
-      result.add(o)
-  elif lhs.kind in nnkLiterals:
+    if lhs.kind != nnkTupleConstr and toIndex.len == 1 and spreadIndex == -1:
+      result = openDefine(toIndex[0], rhs, kind)
+    else:
+      for i, x in toIndex:
+        let index =
+          if spreadIndex == -1 or i < spreadIndex:
+            newLit(i)
+          elif i == spreadIndex:
+            infix(newLit i, "..", prefix(newLit(toIndex.len - i), "^"))
+          else:
+            prefix(newLit(toIndex.len - i), "^")
+        let o = openDefine(x, newTree(nnkBracketExpr, tmp, index), kind)
+        result.add(o)
+  of nnkLiterals:
     result = newCall("doAssert", infix(lhs, "==", rhs))
+  elif lhs.kind == nnkInfix and lhs[0].eqIdent"of":
+    result = openDefine(lhs[1], newCall(lhs[2], rhs), kind)
   elif lhs.kind in {nnkCall, nnkCommand} and lhs.len == 2 and lhs[0].eqIdent"mut":
-    result = defaultDefine(lhs[1], rhs, dkVar)
+    result = openDefine(lhs[1], rhs, dkVar)
   elif lhs.kind == nnkInfix and lhs[0].eqIdent"as":
     let tmp = genSym(nskLet, "tmpAs")
     result = newStmtList(newLetStmt(tmp, rhs))

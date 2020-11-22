@@ -60,6 +60,12 @@ test "basic tuple":
   (a, b, c) := (1, 2, 3)
   check (a, b, c) == (1, 2, 3)
 
+test "tuple ambiguity":
+  (a) := 1
+  check a == 1
+  (b,) := (2,)
+  check b == 2
+
 test "empty tuple acts like discard":
   var modified = false
   () := (modified = true; 0)
@@ -123,3 +129,23 @@ test "custom indices":
   (0..4: hello, 6..^1: world) := "hello world"
   check hello == "hello"
   check world == "world"
+
+test "type coercion":
+  a of int := 4.0
+  check a == 4
+
+  type
+    Obj = object of RootObj
+    Obj2 = object of Obj
+      x: int
+  
+  var o: Obj
+  o = Obj2(x: 3)
+  o2 of Obj2 := o
+  check o2.x == 3
+
+converter toSeq[I, T](a: array[I, T]): seq[T] = @a
+
+test "type coercion with converter":
+  s of seq := [1, 2, 3, 4, 5]
+  check s == @[1, 2, 3, 4, 5]

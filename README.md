@@ -48,8 +48,20 @@ a as mut(b) := c # => let temp = c; let a = temp; var b = temp
 # empty tuple unpacking, discards right hand side:
 () := a
 
-# named unpacking, works on anything:
+# named unpacking, works on anything (prop1 and prop2 must be identifiers):
 (prop1: a, prop2: b) := c
+
+# unpacking by given index:
+(0..4: hello, 6..^1: world) := "hello world"
+import json
+("name": name, "age": age) := %*{"name": "John", "age": 30}
+
+# conversion to type:
+a of int := 4.0
+type Obj = object of RootObj
+type Obj2 = object of Obj
+let x: Obj = Obj2()
+y of Obj2 := x
 
 # option unpacking, only custom type implementation that comes with the library:
 import options
