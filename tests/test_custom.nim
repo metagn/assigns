@@ -46,6 +46,9 @@ test "redefined for Option[T]":
   let opt = some(5)
   ?a := opt
   check a == 5
+  (b, ?c) := (4, opt)
+  check b == 4
+  check c == 5
 
 test "custom with convenience template for LinkedList[T]":
   type LinkedList[T] {.acyclic.} = ref object
