@@ -56,10 +56,13 @@
 ##   
 ##   # conversion to type:
 ##   a of int := 4.0
-##   type Obj = object of RootObj
-##   type Obj2 = object of Obj
+##   type Obj = ref object of RootObj
+##   type Obj2 = ref object of Obj
 ##   let x: Obj = Obj2()
 ##   y of Obj2 := x
+##   
+##   # type annotation (must be directly tied to identifiers):
+##   a is uint8 := 4
 ##   
 ##   # option unpacking, only custom type implementation that comes with the library:
 ##   Some(a) := b
@@ -178,6 +181,13 @@ proc defaultDefine*(lhs, rhs: NimNode, kind = dkLet): NimNode =
       if not (last.kind == nnkInfix and last[0].eqIdent"as"):
         result.add(openDefine(last, tmp, kind))
         break
+  elif lhs.kind == nnkInfix and lhs[0].eqIdent"is":
+    if lhs[1].kind notin {nnkIdent, nnkSym, nnkOpenSymChoice, nnkClosedSymChoice}:
+      error("type annotations should be given directly to identifiers", lhs[1])
+    if kind == dkAssign:
+      error("cannot put type annotation on assignment", lhs)
+    result = newTree(if kind == dkVar: nnkVarSection else: nnkLetSection,
+      newIdentDefs(lhs[1], lhs[2], rhs))
   else:
     result = defstmt(lhs, rhs)
 
@@ -200,20 +210,24 @@ template implementDefine*(T; body) {.dirty.} =
       next: LinkedList[T]
     
     implementDefine LinkedList:
-      if lhs.kind == nnkBracket and lhs.len == 1 and lhs[0].kind == nnkInfix and lhs[0][0].eqIdent"|":
-        newStmtList(open(lhs[0][1], newDotExpr(rhs, ident"leaf")), open(lhs[0][2], newDotExpr(rhs, ident"next")))
+      let newLhs = if lhs.kind == nnkBracket and lhs.len == 1: lhs[0] else: lhs
+      if newLhs.kind == nnkInfix and newLhs[0].eqIdent"|":
+        newStmtList(
+          open(newLhs[1], newDotExpr(rhs, ident"leaf")),
+          open(newLhs[2], newDotExpr(rhs, ident"next")))
       else:
-        default(lhs, rhs)
+        default()
     
     let a = LinkedList[int](leaf: 1, next:
       LinkedList[int](leaf: 2, next:
         LinkedList[int](leaf: 3, next: nil)))
     
-    [x | [y | [z | _]]] := a
+    x | [y | [z | _]] := a
     doAssert (x, y, z) == (1, 2, 3)
   macro define(lhs; rhs: T, kind: static[DefineKind]): untyped =
     template open(a, b: NimNode): NimNode {.used.} = openDefine(a, b, kind)
     template open(a, b: NimNode, k: static[DefineKind]): NimNode {.used.} = openDefine(a, b, k)
+    template default(): NimNode {.used.} = defaultDefine(lhs, rhs, kind)
     template default(a, b: NimNode): NimNode {.used.} = defaultDefine(a, b, kind)
     template default(a, b: NimNode, k: static[DefineKind]): NimNode {.used.} = defaultDefine(a, b, k)
     body
@@ -223,6 +237,7 @@ template implementDefineExported*(T; body) {.dirty.} =
   macro define*(lhs; rhs: T, kind: static[DefineKind]): untyped =
     template open(a, b: NimNode): NimNode {.used.} = openDefine(a, b, kind)
     template open(a, b: NimNode, k: static[DefineKind]): NimNode {.used.} = openDefine(a, b, k)
+    template default(): NimNode {.used.} = defaultDefine(lhs, rhs, kind)
     template default(a, b: NimNode): NimNode {.used.} = defaultDefine(a, b, kind)
     template default(a, b: NimNode, k: static[DefineKind]): NimNode {.used.} = defaultDefine(a, b, k)
     body
@@ -251,6 +266,7 @@ macro def*(assignments, body): untyped =
   ## Example:
   ##
   ## .. code-block::nim
+  ##  var a = 3
   ##  def:
   ##    a = 1
   ##  do:

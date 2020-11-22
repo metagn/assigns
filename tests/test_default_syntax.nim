@@ -47,6 +47,14 @@ test "pragmas":
   check foo() == 1
   check foo() == 2
 
+test "more var":
+  mut((a, b, c)) := (1, 2, 3)
+  (a, b, c) = (6, 5, 4)
+  check (a, b, c) == (6, 5, 4)
+  (d, e, f) := var (1, 2, 3)
+  (d, e, f) = (6, 5, 4)
+  check (d, e, f) == (6, 5, 4)
+
 import options
 test "options":
   def:
@@ -135,8 +143,8 @@ test "type coercion":
   check a == 4
 
   type
-    Obj = object of RootObj
-    Obj2 = object of Obj
+    Obj = ref object of RootObj
+    Obj2 = ref object of Obj
       x: int
   
   var o: Obj
@@ -149,3 +157,10 @@ converter toSeq[I, T](a: array[I, T]): seq[T] = @a
 test "type coercion with converter":
   s of seq := [1, 2, 3, 4, 5]
   check s == @[1, 2, 3, 4, 5]
+
+test "type annotation":
+  a is uint8 := 4
+  check a is uint8
+  check a == 4u8
+
+  check not compiles(b is uint8 := -4)

@@ -58,10 +58,13 @@ import json
 
 # conversion to type:
 a of int := 4.0
-type Obj = object of RootObj
-type Obj2 = object of Obj
+type Obj = ref object of RootObj
+type Obj2 = ref object of Obj
 let x: Obj = Obj2()
 y of Obj2 := x
+
+# type annotation (must be directly tied to variable names):
+a is uint8 := 4
 
 # option unpacking, only custom type implementation that comes with the library:
 import options
@@ -115,6 +118,7 @@ echo x # 5
 
 Not implemented:
 
-* Exported variables, ie `let a* = 3`. Could be done like `a.export := 3`, but that looks weird. Either way, this would need yet another flag to propagate between overloads and doesn't seem that useful to me.
-* Type annotations, would probably use `is` because `of` would be nice for objects with inheritance. This would make it
-look ugly though so I'm not sure if it's worth it.
+* Exported variables, ie `let a* = 3`. I don't think the complexity this will add, both to the syntax and the behavior of the macros, is worth it. You would have to do `export a` after for now.
+* Const variables, doesn't make very much sense IMO. Should be pretty trivial to support if needed though
+* Type definitions. As much as I think type definitions need some improvement or sugar, I think that is out of the scope of this package, and there are a lot of existing packages with differing opinions.
+* Procs/lambdas. I think ``sugar.`=>` `` is good enough for procs. You would have to manually unpack the arguments though. Maybe I could add `:=>` so `((a, b)) :=> c` becomes `(tmp1) => ((a, b) := tmp1; c)` so it's compatible with all kinds of `=>` macros, but then I would have to be able to parse the left hand side in a specific way. A well-executed contribution for this would be appreciated.
