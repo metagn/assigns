@@ -93,7 +93,10 @@ test "named tuple":
 test "as":
   (a, b) as c := (1, 2)
   check (a, b) == c
-  check c == (1, 2) 
+  check c == (1, 2)
+  (d, e) := f := (1, 2)
+  check (d, e) == f
+  check f == (1, 2)
 
 test "combo":
   (a, Some(mut b), mut c) := (1, some(2), 3)

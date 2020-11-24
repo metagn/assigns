@@ -30,6 +30,7 @@
 ##   
 ##   # aliasing
 ##   a as b := c
+##   a := b := c
 ##   
 ##   # nesting (applies to everything)
 ##   a as mut(b) := c # => let temp = c; let a = temp; var b = temp
@@ -171,14 +172,14 @@ proc defaultDefine*(lhs, rhs: NimNode, kind = dkLet): NimNode =
     result = openDefine(lhs[1], newCall(lhs[2], rhs), kind)
   elif lhs.kind in {nnkCall, nnkCommand} and lhs.len == 2 and lhs[0].eqIdent"mut":
     result = openDefine(lhs[1], rhs, dkVar)
-  elif lhs.kind == nnkInfix and lhs[0].eqIdent"as":
+  elif lhs.kind == nnkInfix and (lhs[0].eqIdent"as" or lhs[0].eqIdent":="):
     let tmp = genSym(nskLet, "tmpAs")
     result = newStmtList(newLetStmt(tmp, rhs))
     var last = lhs
     while true:
       result.add(openDefine(last[2], tmp, kind))
       last = last[1]
-      if not (last.kind == nnkInfix and last[0].eqIdent"as"):
+      if not (last.kind == nnkInfix and (lhs[0].eqIdent"as" or lhs[0].eqIdent":=")):
         result.add(openDefine(last, tmp, kind))
         break
   elif lhs.kind == nnkInfix and lhs[0].eqIdent"is":

@@ -32,6 +32,7 @@ a ::= b
 
 # aliasing
 a as b := c
+a := b := c
 
 # nesting (applies to everything)
 a as mut(b) := c # => let temp = c; let a = temp; var b = temp
