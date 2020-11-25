@@ -32,9 +32,6 @@
 ##   a as b := c
 ##   a := b := c
 ##   
-##   # nesting (applies to everything)
-##   a as mut(b) := c # => let temp = c; let a = temp; var b = temp
-##   
 ##   # literal assertion (for matching)
 ##   1 := 2 # => doAssert 1 == 2
 ##   
@@ -43,6 +40,11 @@
 ##   
 ##   # collection spreading (works if you can do d[i], d[i..^j] and d[^i]):
 ##   (a, *b, c) := d
+##   (a, ..b, c) := d
+##   (a, ...b, c) := d
+##   
+##   # nesting (applies to everything)
+##   (a, b) as mut(c) := d # => let temp = d; let a = temp[0]; let b = temp[1]; var c = temp
 ##   
 ##   # empty tuple unpacking, discards right hand side:
 ##   () := a
@@ -146,7 +148,8 @@ proc defaultDefine*(lhs, rhs: NimNode, kind = dkLet): NimNode =
             newDotExpr(tmp, name[0])
           else:
             newTree(nnkBracketExpr, tmp, name[0]), kind))
-      elif name.kind == nnkPrefix and name[0].eqIdent"*":
+      elif name.kind == nnkPrefix and
+        (name[0].eqIdent"*" or name[0].eqIdent".." or name[0].eqIdent"..."):
         if spreadIndex >= 0:
           error("cannot have 2 spread defines", name)
         spreadIndex = toIndex.len

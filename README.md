@@ -34,9 +34,6 @@ a ::= b
 a as b := c
 a := b := c
 
-# nesting (applies to everything)
-a as mut(b) := c # => let temp = c; let a = temp; var b = temp
-
 # literal assertion (for matching)
 1 := 2 # => doAssert 1 == 2
 
@@ -45,6 +42,11 @@ a as mut(b) := c # => let temp = c; let a = temp; var b = temp
 
 # collection spreading (works if you can do d[i], d[i..^j] and d[^i]):
 (a, *b, c) := d
+(a, ..b, c) := d
+(a, ...b, c) := d
+
+# nesting (applies to everything)
+(a, b) as mut(c) := d # => let temp = d; let a = temp[0]; let b = temp[1]; var c = temp
 
 # empty tuple unpacking, discards right hand side:
 () := a
@@ -122,4 +124,4 @@ Not implemented:
 * Exported variables, ie `let a* = 3`. I don't think the complexity this will add, both to the syntax and the behavior of the macros, is worth it. You would have to do `export a` after for now.
 * Const variables, doesn't make very much sense IMO. Should be pretty trivial to support if needed though
 * Type definitions. As much as I think type definitions need some improvement or sugar, I think that is out of the scope of this package, and there are a lot of existing packages with differing opinions.
-* Procs/lambdas. I think ``sugar.`=>` `` is good enough for procs. You would have to manually unpack the arguments though. Maybe I could add `:=>` so `((a, b)) :=> c` becomes `(tmp1) => ((a, b) := tmp1; c)` so it's compatible with all kinds of `=>` macros, but then I would have to be able to parse the left hand side in a specific way. A well-executed contribution for this would be appreciated.
+* Procs/lambdas. I think ``sugar.`=>` `` is good enough for procs and it would be way too complex to try and add unpacking syntax to the arguments.
