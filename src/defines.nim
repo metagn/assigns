@@ -481,3 +481,35 @@ macro `::=??`*(a, b, body, elseBranch): untyped =
         `elseExpr`
     else:
       `elseExpr`
+
+macro unpackArgs*(args, routine): untyped =
+  ## Injects unpacking assignments into the body of a given routine.
+  runnableExamples:
+    proc foo(tup: (int, string)) {.unpackArgs: [(a, b): tup].} =
+      doAssert a == b.len
+    let t = (3, "abc")
+    foo(t)
+  case routine.kind
+  of nnkStmtList:
+    result = newStmtList()
+    for r in routine:
+      result.add(getAst(unpackArgs(args, r)))
+  of RoutineNodes:
+    let bod = block:
+      if routine[^1].kind != nnkStmtList:
+        routine[^1] = newStmtList(routine[^1])
+      routine[^1]
+    for a in args:
+      case a.kind
+      of nnkInfix:
+        if a[0].eqIdent("<-"):
+          bod.insert(0, openDefine(a[2], a[1]))
+        else:
+          bod.insert(0, openDefine(a[1], a[2]))
+      of nnkExprColonExpr, nnkExprEqExpr, nnkAsgn:
+        bod.insert(0, openDefine(a[0], a[1]))
+      else:
+        error("unrecognized unpacking expression for unpackArgs with kind " & $a.kind, a)
+    result = routine
+  else:
+    error("unrecognized routine expression for unpackArgs with kind " & $routine.kind, routine)

@@ -167,3 +167,15 @@ test "type annotation":
   check a == 4u8
 
   check not compiles(b is uint8 := -4)
+
+import sequtils
+
+test "unpackArgs":
+  proc foo(x: (int, string)) {.unpackArgs: [(a, b): x].} =
+    check a == b.len
+  
+  foo((3, "abc"))
+  check @{"a": "b", "c": "d"}.map(
+    proc (tup: (string, string)): auto {.unpackArgs: ((a, b) = tup).} =
+      a & ':' & b) ==
+    @["a:b", "c:d"]
