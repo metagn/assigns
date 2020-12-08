@@ -19,20 +19,7 @@ macro match(val: untyped, branches: varargs[untyped]): untyped =
       let bod = b[^1]
       for vi in 0..<b.len - 1:
         let v = b[vi]
-        result = quote do:
-          var raisedInBody = false
-          try:
-            `v` := `val`
-            try:
-              `bod`
-            except Exception:
-              raisedInBody = true
-              raise
-          except Exception:
-            if raisedInBody:
-              raise
-            else:
-              `result`
+        result = getAst(`:=?`(v, val, bod, result))
     else:
       error("invalid branch for match", b)
 
@@ -47,9 +34,26 @@ test "naive match works":
   check isSomeYesOrNo(some 3) == "yes"
   check isSomeYesOrNo(none int) == "no"
 
-  var x: string
-  match range[1..5](4):
-  of 1, 2, 3: x = "below or equal to three"
-  of 4, 5: x = "above three"
+  let x = match range[1..5](4):
+  of 1, 2, 3: "below or equal to three"
+  of 4, 5: "above three"
+  else:
+    # unreachable
+    ""
 
   check x == "above three"
+
+  proc fizzbuzz(n: int): string =
+    match (n mod 3, n mod 5):
+    of (0, 0): "FizzBuzz"
+    of (0, _): "Fizz"
+    of (_, 0): "Buzz"
+    else: $n
+  
+  check:
+    fizzbuzz(1) == "1"
+    fizzbuzz(2) == "2"
+    fizzbuzz(3) == "Fizz"
+    fizzbuzz(4) == "4"
+    fizzbuzz(5) == "Buzz"
+    fizzbuzz(15) == "FizzBuzz"

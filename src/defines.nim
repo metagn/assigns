@@ -32,11 +32,24 @@
 ##   a as b := c
 ##   a := b := c
 ##   
-##   # literal assertion (for matching)
-##   1 := 2 # => doAssert 1 == 2
+##   # checks (for matching)
+##   == 1 := 2 # raises exception
+##   1 := 2 # same, literals inferred to be equality checks
+##   (== ok, res) := (ok, 1)
+##   (in [1, 2, 3]) := 2
+##   (is float) := 2.0
+##   != 1 := 2
+##   (notin [1, 2, 3]) := 4
+##   (isnot int) := 2.0
 ##   
 ##   # collection unpacking (works for anything if it can be indexed with integers):
 ##   (a, b, c) := d
+##   (a) := d # single parens does not unpack, equivalent to a := b
+##   (a,) := d # equivalent to a := b[0]
+## 
+##   # default syntax supports brackets instead of parens:
+##   [a, b, c] := d
+##   [a] := d # equivalent to a := d[0]
 ##   
 ##   # collection spreading (works if you can do d[i], d[i..^j] and d[^i]):
 ##   (a, *b, c) := d
@@ -56,6 +69,9 @@
 ##   (0..4: hello, 6..^1: world) := "hello world"
 ##   import json
 ##   ("name": name, "age": age) := %*{"name": "John", "age": 30}
+## 
+##   # indexing by identifier if brackets used instead of parens (for enum indexed arrays):
+##   [index1: a, index2: b] := c
 ##   
 ##   # conversion to type:
 ##   a of int := 4.0
@@ -108,6 +124,44 @@ type DefineKind* = enum
   ## Propagated flag of how definitions should create assignments.
   dkLet, dkVar, dkAssign
 
+type
+  DefineCheckError* = object of CatchableError
+    ## any kind of check error in defines
+  DefineEqualityCheckError* = object of DefineCheckError
+    ## error for failed equality checks in defines
+  DefineContainsCheckError* = object of DefineCheckError
+    ## error for failed contains checks in defines
+
+template defineCheckEqual*(a, b): untyped =
+  ## template for equality checks in defines
+  if a != b:
+    raise newException(DefineEqualityCheckError, "expected " & astToStr(b) & ", got " & astToStr(a))
+
+template defineCheckNotEqual*(a, b): untyped =
+  ## template for non-equality checks in defines
+  if a == b:
+    raise newException(DefineEqualityCheckError, "did not expect " & astToStr(b) & ", got " & astToStr(a))
+
+template defineCheckType*(a, b): untyped =
+  ## template for type checks in defines
+  when typeof(a) isnot b:
+    {.error: "type of " & astToStr(a) & " was " & $typeof(a) & ", not " & astToStr(b).}
+
+template defineCheckNotType*(a, b): untyped =
+  ## template for non-type checks in defines
+  when typeof(a) is b:
+    {.error: "type of " & astToStr(a) & " was not " & $typeof(a) & ", was " & astToStr(b).}
+
+template defineCheckContains*(a, b): untyped =
+  ## template for equality checks in defines
+  if a notin b:
+    raise newException(DefineContainsCheckError, "expected " & astToStr(a) & " to be in " & astToStr(b))
+
+template defineCheckNotContains*(a, b): untyped =
+  ## template for non-equality checks in defines
+  if a in b:
+    raise newException(DefineContainsCheckError, "did not expect " & astToStr(a) & " to be in " & astToStr(b))
+
 template openDefine*(lhs, rhs: NimNode, dk: DefineKind = dkLet): NimNode =
   ## Creates a node that calls an open symbol `define` with `lhs` and `rhs`.
   if rhs.kind == nnkVarTy:
@@ -132,7 +186,7 @@ proc defaultDefine*(lhs, rhs: NimNode, kind = dkLet): NimNode =
     of dkLet: newLetStmt(a, b)
     of dkAssign: newAssignment(a, b)
   case lhs.kind
-  of nnkPar, nnkTupleConstr:
+  of nnkPar, nnkTupleConstr, nnkBracket:
     let tmp = genSym(nskLet, "tmpPar")
     result = newStmtList(newLetStmt(
       if lhs.len == 0:
@@ -144,7 +198,7 @@ proc defaultDefine*(lhs, rhs: NimNode, kind = dkLet): NimNode =
     for i, name in lhs.pairs:
       if name.kind == nnkExprColonExpr:
         result.add(openDefine(name[1],
-          if name[0].kind == nnkIdent:
+          if lhs.kind != nnkBracket and name[0].kind == nnkIdent:
             newDotExpr(tmp, name[0])
           else:
             newTree(nnkBracketExpr, tmp, name[0]), kind))
@@ -156,7 +210,7 @@ proc defaultDefine*(lhs, rhs: NimNode, kind = dkLet): NimNode =
         toIndex.add(name[1])
       else:
         toIndex.add(name)
-    if lhs.kind != nnkTupleConstr and toIndex.len == 1 and spreadIndex == -1:
+    if lhs.kind == nnkPar and toIndex.len == 1 and spreadIndex == -1: # (a)
       result = openDefine(toIndex[0], rhs, kind)
     else:
       for i, x in toIndex:
@@ -170,7 +224,19 @@ proc defaultDefine*(lhs, rhs: NimNode, kind = dkLet): NimNode =
         let o = openDefine(x, newTree(nnkBracketExpr, tmp, index), kind)
         result.add(o)
   of nnkLiterals:
-    result = newCall("doAssert", infix(lhs, "==", rhs))
+    result = newCall(bindSym"defineCheckEqual", rhs, lhs)
+  elif lhs.kind == nnkPrefix and lhs[0].eqIdent"==":
+    result = newCall(bindSym"defineCheckEqual", rhs, lhs[1])
+  elif lhs.kind == nnkPrefix and lhs[0].eqIdent"!=":
+    result = newCall(bindSym"defineCheckNotEqual", rhs, lhs[1])
+  elif lhs.kind == nnkPrefix and lhs[0].eqIdent"is":
+    result = newCall(bindSym"defineCheckType", rhs, lhs[1])
+  elif lhs.kind == nnkPrefix and lhs[0].eqIdent"isnot":
+    result = newCall(bindSym"defineCheckNotType", rhs, lhs[1])
+  elif lhs.kind == nnkPrefix and lhs[0].eqIdent"in":
+    result = newCall(bindSym"defineCheckContains", rhs, lhs[1])
+  elif lhs.kind == nnkPrefix and lhs[0].eqIdent"notin":
+    result = newCall(bindSym"defineCheckNotContains", rhs, lhs[1])
   elif lhs.kind == nnkInfix and lhs[0].eqIdent"of":
     result = openDefine(lhs[1], newCall(lhs[2], rhs), kind)
   elif lhs.kind in {nnkCall, nnkCommand} and lhs.len == 2 and lhs[0].eqIdent"mut":

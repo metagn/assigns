@@ -130,6 +130,19 @@ test "array/seq spread":
   check c == 5
   check f == 5
 
+test "bracket spread":
+  [a, *b, c] := [1, 2, 3, 4, 5]
+  check:
+    a == 1
+    b == [2, 3, 4]
+    c == 5
+  type Foo = enum x, y, z
+  arr is array[Foo, int] := [1, 2, 3]
+  [z: f, x: d, y: e] := arr
+  check (d, e, f) == (1, 2, 3)
+  [g] := [1]
+  check g == 1
+
 import json
 
 test "custom indices":
@@ -179,3 +192,13 @@ test "unpackArgs":
     proc (tup: (string, string)): auto {.unpackArgs: ((a, b) = tup).} =
       a & ':' & b) ==
     @["a:b", "c:d"]
+
+test "checks":
+  a := 1
+  == a := a
+  [0..4: == "hello", 6..^1: == "world"] := "hello world"
+  (in [1, 2, 3]) := 2
+  (is float) := 2.0
+  != 1 := 2
+  (notin [1, 2, 3]) := 4
+  (isnot int) := 2.0
