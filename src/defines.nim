@@ -144,12 +144,12 @@ template defineCheckNotEqual*(a, b): untyped =
 
 template defineCheckType*(a, b): untyped =
   ## template for type checks in defines
-  when typeof(a) isnot b:
+  when a isnot b:
     {.error: "type of " & astToStr(a) & " was " & $typeof(a) & ", not " & astToStr(b).}
 
 template defineCheckNotType*(a, b): untyped =
   ## template for non-type checks in defines
-  when typeof(a) is b:
+  when a is b:
     {.error: "type of " & astToStr(a) & " was not " & $typeof(a) & ", was " & astToStr(b).}
 
 template defineCheckContains*(a, b): untyped =
