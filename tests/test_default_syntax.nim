@@ -38,6 +38,8 @@ test "basic :=":
   check x == 6
   y = 6
   check y == 6
+  `case` := 4
+  check `case` == 4
 
 test "pragmas":
   proc foo: int =
