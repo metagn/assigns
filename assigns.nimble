@@ -2,7 +2,7 @@
 
 version       = "0.6.0"
 author        = "hlaaftana"
-description   = "syntax sugar for local assignments"
+description   = "syntax sugar for assignments"
 license       = "MIT"
 srcDir        = "src"
 
