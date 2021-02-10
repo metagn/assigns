@@ -1,8 +1,14 @@
-# defines
+# assigns
+
+Disclaimer: [fusion/matching](https://nim-lang.github.io/fusion/src/fusion/matching.html) has
+passed this library by a fair amount, this package probably has little need for new changes.
+I would tag this as "abandoned" or "archived" in Nimble if it was possible.
+If you want new changes, you can fork and even republish on Nimble by linking
+the Nimble package to your repository.
 
 Macros to allow custom/complicated assignment for Nim. Allows for overloading with typed macros.
 
-Examples in [docs](https://hlaaftana.github.io/defines/defines.html#examples) and in tests.
+Examples in [docs](https://hlaaftana.github.io/assigns/assigns.html#examples) and in tests.
 
 Not implemented:
 

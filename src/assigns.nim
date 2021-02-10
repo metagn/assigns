@@ -105,10 +105,10 @@
 ## ==================
 ## 
 ## A large and important feature in this package is that you can overload definitions for custom types.
-## The `define` macro in this module is overloadable, and the `openDefine` template creates a
-## NimNode that calls a forced open symbol of `define` with the AST of the left hand side,
+## The `assign` macro in this module is overloadable, and the `openAssign` template creates a
+## NimNode that calls a forced open symbol of `assign` with the AST of the left hand side,
 ## AST of the right hand side, and the flag of whether or not it is a `let`, `var`, or mutating
-## assignment. You can use the `implementDefine` and `implementDefineExported` templates as a
+## assignment. You can use the `implementAssign` and `implementAssignExported` templates as a
 ## shorthand for declaring these overloads.
 
 import macros, options
@@ -117,74 +117,74 @@ when (compiles do: import sliceutils/tuples):
   import sliceutils/tuples
   export tuples
 else:
-  import defines/tupleindex
+  import assigns/tupleindex
   export tupleindex
 
-type DefineKind* = enum
+type AssignKind* = enum
   ## Propagated flag of how definitions should create assignments.
-  dkLet, dkVar, dkAssign
+  akLet, akVar, akAssign
 
 type
-  DefineCheckError* = object of CatchableError
-    ## any kind of check error in defines
-  DefineEqualityCheckError* = object of DefineCheckError
-    ## error for failed equality checks in defines
-  DefineContainsCheckError* = object of DefineCheckError
-    ## error for failed contains checks in defines
+  AssignCheckError* = object of CatchableError
+    ## any kind of check error in assignments
+  AssignEqualityCheckError* = object of AssignCheckError
+    ## error for failed equality checks in assignments
+  AssignContainsCheckError* = object of AssignCheckError
+    ## error for failed contains checks in assignments
 
-template defineCheckEqual*(a, b): untyped =
-  ## template for equality checks in defines
+template assignCheckEqual*(a, b): untyped =
+  ## template for equality checks in assignments
   if a != b:
-    raise newException(DefineEqualityCheckError, "expected " & astToStr(b) & ", got " & astToStr(a))
+    raise newException(AssignEqualityCheckError, "expected " & astToStr(b) & ", got " & astToStr(a))
 
-template defineCheckNotEqual*(a, b): untyped =
-  ## template for non-equality checks in defines
+template assignCheckNotEqual*(a, b): untyped =
+  ## template for non-equality checks in assignments
   if a == b:
-    raise newException(DefineEqualityCheckError, "did not expect " & astToStr(b) & ", got " & astToStr(a))
+    raise newException(AssignEqualityCheckError, "did not expect " & astToStr(b) & ", got " & astToStr(a))
 
-template defineCheckType*(a, b): untyped =
-  ## template for type checks in defines
+template assignCheckType*(a, b): untyped =
+  ## template for type checks in assignments
   when a isnot b:
     {.error: "type of " & astToStr(a) & " was " & $typeof(a) & ", not " & astToStr(b).}
 
-template defineCheckNotType*(a, b): untyped =
-  ## template for non-type checks in defines
+template assignCheckNotType*(a, b): untyped =
+  ## template for non-type checks in assignments
   when a is b:
     {.error: "type of " & astToStr(a) & " was not " & $typeof(a) & ", was " & astToStr(b).}
 
-template defineCheckContains*(a, b): untyped =
-  ## template for equality checks in defines
+template assignCheckContains*(a, b): untyped =
+  ## template for equality checks in assignments
   if a notin b:
-    raise newException(DefineContainsCheckError, "expected " & astToStr(a) & " to be in " & astToStr(b))
+    raise newException(AssignContainsCheckError, "expected " & astToStr(a) & " to be in " & astToStr(b))
 
-template defineCheckNotContains*(a, b): untyped =
-  ## template for non-equality checks in defines
+template assignCheckNotContains*(a, b): untyped =
+  ## template for non-equality checks in assignments
   if a in b:
-    raise newException(DefineContainsCheckError, "did not expect " & astToStr(a) & " to be in " & astToStr(b))
+    raise newException(AssignContainsCheckError, "did not expect " & astToStr(a) & " to be in " & astToStr(b))
 
-template openDefine*(lhs, rhs: NimNode, dk: DefineKind = dkLet): NimNode =
-  ## Creates a node that calls an open symbol `define` with `lhs` and `rhs`.
+template openAssign*(lhs, rhs: NimNode, ak: AssignKind = akLet): NimNode =
+  ## Creates a node that calls an open symbol `assign` with `lhs` and `rhs`.
   if rhs.kind == nnkVarTy:
-    newCall(bindSym("define", brForceOpen), lhs, rhs[0], newLit dkVar)
+    newCall(bindSym("assign", brForceOpen), lhs, rhs[0], newLit akVar)
   else:
-    newCall(bindSym("define", brForceOpen), lhs, rhs, newLit dk)
+    newCall(bindSym("assign", brForceOpen), lhs, rhs, newLit ak)
 
-# needs to be here for openDefine to work
-proc defaultDefine*(lhs, rhs: NimNode, kind = dkLet): NimNode
+# needs to be here for openAssign to work
+proc defaultAssign*(lhs, rhs: NimNode, kind = akLet): NimNode
   ## The default interpretation of a definition.
 
-macro define*[T](lhs; rhs: T, kind: static[DefineKind]): untyped =
+macro assign*[T](lhs; rhs: T, kind: static[AssignKind]): untyped =
   ## Handles definitions for a type `T`.
   ## Can be overloaded, optionally via the convenience macros
-  ## `implementDefine` and `implementDefineExported`. 
-  result = defaultDefine(lhs, rhs, kind)
+  ## `implementAssign` and `implementAssignExported`. 
+  result = defaultAssign(lhs, rhs, kind)
 
-proc defaultDefine*(lhs, rhs: NimNode, kind = dkLet): NimNode =
+proc defaultAssign*(lhs, rhs: NimNode, kind = akLet): NimNode =
   proc defstmt(a, b: NimNode): NimNode =
     case kind
-    of dkVar: newVarStmt(a, b)
-    of dkLet: newLetStmt(a, b)
-    of dkAssign: newAssignment(a, b)
+    of akVar: newVarStmt(a, b)
+    of akLet: newLetStmt(a, b)
+    of akAssign: newAssignment(a, b)
   case lhs.kind
   of nnkPar, nnkTupleConstr, nnkBracket:
     let tmp = genSym(nskLet, "tmpPar")
@@ -197,7 +197,7 @@ proc defaultDefine*(lhs, rhs: NimNode, kind = dkLet): NimNode =
     var spreadIndex = -1
     for i, name in lhs.pairs:
       if name.kind == nnkExprColonExpr:
-        result.add(openDefine(name[1],
+        result.add(openAssign(name[1],
           if lhs.kind != nnkBracket and name[0].kind == nnkIdent:
             newDotExpr(tmp, name[0])
           else:
@@ -205,13 +205,13 @@ proc defaultDefine*(lhs, rhs: NimNode, kind = dkLet): NimNode =
       elif name.kind == nnkPrefix and
         (name[0].eqIdent"*" or name[0].eqIdent".." or name[0].eqIdent"..."):
         if spreadIndex >= 0:
-          error("cannot have 2 spread defines", name)
+          error("cannot have 2 spread assignments", name)
         spreadIndex = toIndex.len
         toIndex.add(name[1])
       else:
         toIndex.add(name)
     if lhs.kind == nnkPar and toIndex.len == 1 and spreadIndex == -1: # (a)
-      result = openDefine(toIndex[0], rhs, kind)
+      result = openAssign(toIndex[0], rhs, kind)
     else:
       for i, x in toIndex:
         let index =
@@ -221,65 +221,65 @@ proc defaultDefine*(lhs, rhs: NimNode, kind = dkLet): NimNode =
             infix(newLit i, "..", prefix(newLit(toIndex.len - i), "^"))
           else:
             prefix(newLit(toIndex.len - i), "^")
-        let o = openDefine(x, newTree(nnkBracketExpr, tmp, index), kind)
+        let o = openAssign(x, newTree(nnkBracketExpr, tmp, index), kind)
         result.add(o)
   of nnkLiterals:
-    result = newCall(bindSym"defineCheckEqual", rhs, lhs)
+    result = newCall(bindSym"assignCheckEqual", rhs, lhs)
   elif lhs.kind == nnkPrefix and lhs[0].eqIdent"==":
-    result = newCall(bindSym"defineCheckEqual", rhs, lhs[1])
+    result = newCall(bindSym"assignCheckEqual", rhs, lhs[1])
   elif lhs.kind == nnkPrefix and lhs[0].eqIdent"!=":
-    result = newCall(bindSym"defineCheckNotEqual", rhs, lhs[1])
+    result = newCall(bindSym"assignCheckNotEqual", rhs, lhs[1])
   elif lhs.kind == nnkPrefix and lhs[0].eqIdent"is":
-    result = newCall(bindSym"defineCheckType", rhs, lhs[1])
+    result = newCall(bindSym"assignCheckType", rhs, lhs[1])
   elif lhs.kind == nnkPrefix and lhs[0].eqIdent"isnot":
-    result = newCall(bindSym"defineCheckNotType", rhs, lhs[1])
+    result = newCall(bindSym"assignCheckNotType", rhs, lhs[1])
   elif lhs.kind == nnkPrefix and lhs[0].eqIdent"in":
-    result = newCall(bindSym"defineCheckContains", rhs, lhs[1])
+    result = newCall(bindSym"assignCheckContains", rhs, lhs[1])
   elif lhs.kind == nnkPrefix and lhs[0].eqIdent"notin":
-    result = newCall(bindSym"defineCheckNotContains", rhs, lhs[1])
+    result = newCall(bindSym"assignCheckNotContains", rhs, lhs[1])
   elif lhs.kind == nnkInfix and lhs[0].eqIdent"of":
-    result = openDefine(lhs[1], newCall(lhs[2], rhs), kind)
+    result = openAssign(lhs[1], newCall(lhs[2], rhs), kind)
   elif lhs.kind in {nnkCall, nnkCommand} and lhs.len == 2 and lhs[0].eqIdent"mut":
-    result = openDefine(lhs[1], rhs, dkVar)
+    result = openAssign(lhs[1], rhs, akVar)
   elif lhs.kind == nnkInfix and (lhs[0].eqIdent"as" or lhs[0].eqIdent":="):
     let tmp = genSym(nskLet, "tmpAs")
     result = newStmtList(newLetStmt(tmp, rhs))
     var last = lhs
     while true:
-      result.add(openDefine(last[2], tmp, kind))
+      result.add(openAssign(last[2], tmp, kind))
       last = last[1]
       if not (last.kind == nnkInfix and (lhs[0].eqIdent"as" or lhs[0].eqIdent":=")):
-        result.add(openDefine(last, tmp, kind))
+        result.add(openAssign(last, tmp, kind))
         break
   elif lhs.kind == nnkInfix and lhs[0].eqIdent"is":
     if lhs[1].kind notin {nnkIdent, nnkSym, nnkOpenSymChoice, nnkClosedSymChoice}:
       error("type annotations should be given directly to identifiers", lhs[1])
-    if kind == dkAssign:
+    if kind == akAssign:
       error("cannot put type annotation on assignment", lhs)
-    result = newTree(if kind == dkVar: nnkVarSection else: nnkLetSection,
+    result = newTree(if kind == akVar: nnkVarSection else: nnkLetSection,
       newIdentDefs(lhs[1], lhs[2], rhs))
   else:
     result = defstmt(lhs, rhs)
 
-when not defined(definesDisableOptionDefine):
-  macro define*[T](lhs; rhs: Option[T], kind: static[DefineKind] = dkLet): untyped =
-    ## The library's builtin overload of `define` for `Option[T]`.
+when not defined(assignsDisableOptionAssign):
+  macro assign*[T](lhs; rhs: Option[T], kind: static[AssignKind] = akLet): untyped =
+    ## The library's builtin overload of `assign` for `Option[T]`.
     if lhs.kind in {nnkCall, nnkCommand} and lhs.len == 2 and (lhs[0].eqIdent"some" or lhs[0].eqIdent"Some"):
-      result = openDefine(lhs[1], newCall(bindSym"get", rhs), kind)
+      result = openAssign(lhs[1], newCall(bindSym"get", rhs), kind)
     else:
-      result = defaultDefine(lhs, rhs, kind)
+      result = defaultAssign(lhs, rhs, kind)
 
-template implementDefine*(T; body) {.dirty.} =
-  ## Implements an overload (non-exported) of `define` for `T` with the macro body being `body`.
+template implementAssign*(T; body) {.dirty.} =
+  ## Implements an overload (non-exported) of `assign` for `T` with the macro body being `body`.
   ## Macro argument names in order are `lhs`, `rhs` and `kind`.
-  ## Has shorthand aliases `open` and `default` for `openDefine` and `defaultDefine` respectively.
+  ## Has shorthand aliases `open` and `default` for `openAssign` and `defaultAssign` respectively.
   runnableExamples:
     import macros
     type LinkedList[T] {.acyclic.} = ref object
       leaf: T
       next: LinkedList[T]
     
-    implementDefine LinkedList:
+    implementAssign LinkedList:
       let newLhs = if lhs.kind == nnkBracket and lhs.len == 1: lhs[0] else: lhs
       if newLhs.kind == nnkInfix and newLhs[0].eqIdent"|":
         newStmtList(
@@ -294,22 +294,22 @@ template implementDefine*(T; body) {.dirty.} =
     
     x | [y | [z | _]] := a
     doAssert (x, y, z) == (1, 2, 3)
-  macro define(lhs; rhs: T, kind: static[DefineKind]): untyped =
-    template open(a, b: NimNode): NimNode {.used.} = openDefine(a, b, kind)
-    template open(a, b: NimNode, k: static[DefineKind]): NimNode {.used.} = openDefine(a, b, k)
-    template default(): NimNode {.used.} = defaultDefine(lhs, rhs, kind)
-    template default(a, b: NimNode): NimNode {.used.} = defaultDefine(a, b, kind)
-    template default(a, b: NimNode, k: static[DefineKind]): NimNode {.used.} = defaultDefine(a, b, k)
+  macro assign(lhs; rhs: T, kind: static[AssignKind]): untyped =
+    template open(a, b: NimNode): NimNode {.used.} = openAssign(a, b, kind)
+    template open(a, b: NimNode, k: static[AssignKind]): NimNode {.used.} = openAssign(a, b, k)
+    template default(): NimNode {.used.} = defaultAssign(lhs, rhs, kind)
+    template default(a, b: NimNode): NimNode {.used.} = defaultAssign(a, b, kind)
+    template default(a, b: NimNode, k: static[AssignKind]): NimNode {.used.} = defaultAssign(a, b, k)
     body
 
-template implementDefineExported*(T; body) {.dirty.} =
-  ## Same as `implementDefine` but exports the generated macro.
-  macro define*(lhs; rhs: T, kind: static[DefineKind]): untyped =
-    template open(a, b: NimNode): NimNode {.used.} = openDefine(a, b, kind)
-    template open(a, b: NimNode, k: static[DefineKind]): NimNode {.used.} = openDefine(a, b, k)
-    template default(): NimNode {.used.} = defaultDefine(lhs, rhs, kind)
-    template default(a, b: NimNode): NimNode {.used.} = defaultDefine(a, b, kind)
-    template default(a, b: NimNode, k: static[DefineKind]): NimNode {.used.} = defaultDefine(a, b, k)
+template implementAssignExported*(T; body) {.dirty.} =
+  ## Same as `implementAssign` but exports the generated macro.
+  macro assign*(lhs; rhs: T, kind: static[AssignKind]): untyped =
+    template open(a, b: NimNode): NimNode {.used.} = openAssign(a, b, kind)
+    template open(a, b: NimNode, k: static[AssignKind]): NimNode {.used.} = openAssign(a, b, k)
+    template default(): NimNode {.used.} = defaultAssign(lhs, rhs, kind)
+    template default(a, b: NimNode): NimNode {.used.} = defaultAssign(a, b, kind)
+    template default(a, b: NimNode, k: static[AssignKind]): NimNode {.used.} = defaultAssign(a, b, k)
     body
 
 macro def*(assignments): untyped =
@@ -323,11 +323,11 @@ macro def*(assignments): untyped =
     result = newStmtList()
     for a in assignments:
       let (lhs, rhs) = if a.kind == nnkInfix: (a[1], a[2]) else: (a[0], a[1])
-      result.add(openDefine(lhs, rhs))
+      result.add(openAssign(lhs, rhs))
   else:
     let a = assignments
     let (lhs, rhs) = if a.kind == nnkInfix: (a[1], a[2]) else: (a[0], a[1])
-    result = openDefine(lhs, rhs)
+    result = openAssign(lhs, rhs)
 
 macro def*(assignments, body): untyped =
   ## Goes through each assignment expression in `assignments` and processes them into definitions.
@@ -346,11 +346,11 @@ macro def*(assignments, body): untyped =
   if assignments.kind == nnkStmtList:
     for a in assignments:
       let (lhs, rhs) = if a.kind == nnkInfix: (a[1], a[2]) else: (a[0], a[1])
-      result.add(openDefine(lhs, rhs))
+      result.add(openAssign(lhs, rhs))
   else:
     let a = assignments
     let (lhs, rhs) = if a.kind == nnkInfix: (a[1], a[2]) else: (a[0], a[1])
-    result.add(openDefine(lhs, rhs))
+    result.add(openAssign(lhs, rhs))
   result.add(body)
   result = newBlockStmt(result)
 
@@ -360,7 +360,7 @@ macro `:=`*(a, b): untyped =
     (a, b) := (1, 2)
     c as d := 3
     doAssert (a, b, c, d) == (1, 2, 3, 3)
-  result = openDefine(a, b)
+  result = openAssign(a, b)
 
 macro `::=`*(a, b): untyped =
   ## Same as `:=`, except assigns to an existing variable
@@ -370,7 +370,7 @@ macro `::=`*(a, b): untyped =
     (a, b) ::= (1, 2)
     c as d ::= 3
     doAssert (a, b, c, d) == (1, 2, 3, 3)
-  result = openDefine(a, b, dkAssign)
+  result = openAssign(a, b, akAssign)
 
 template `:=?`*(a, b): bool =
   ## Executes (!) ``a := b`` and returns false if it gives a runtime error.
@@ -400,13 +400,13 @@ template `:=?`*(a, b, body): untyped =
   ##  let a = some(3)
   ##  some(n) :=? a:
   ##    doAssert n == 3
-  var defineFinished = false
+  var assignFinished = false
   try:
     a := b
-    defineFinished = true
+    assignFinished = true
     body
   except:
-    if defineFinished:
+    if assignFinished:
       raise
 
 macro `:=?`*(a, b, body, elseBranch): untyped =
@@ -425,13 +425,13 @@ macro `:=?`*(a, b, body, elseBranch): untyped =
   ##    doAssert false
   let elseExpr = if elseBranch.kind == nnkElse: elseBranch[0] else: elseBranch
   result = quote:
-    var defineFinished = false
+    var assignFinished = false
     try:
       `a` := `b`
-      defineFinished = true
+      assignFinished = true
       `body`
     except:
-      if defineFinished:
+      if assignFinished:
         raise
       else:
         `elseExpr`
@@ -569,11 +569,11 @@ macro unpackArgs*(args, routine): untyped =
       case a.kind
       of nnkInfix:
         if a[0].eqIdent("<-"):
-          bod.insert(0, openDefine(a[2], a[1]))
+          bod.insert(0, openAssign(a[2], a[1]))
         else:
-          bod.insert(0, openDefine(a[1], a[2]))
+          bod.insert(0, openAssign(a[1], a[2]))
       of nnkExprColonExpr, nnkExprEqExpr, nnkAsgn:
-        bod.insert(0, openDefine(a[0], a[1]))
+        bod.insert(0, openAssign(a[0], a[1]))
       else:
         error("unrecognized unpacking expression for unpackArgs with kind " & $a.kind, a)
     result = routine

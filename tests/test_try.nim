@@ -1,5 +1,5 @@
 import unittest
-import defines
+import assigns
 
 test ":=??":
   var executed1 = false

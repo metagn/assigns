@@ -1,4 +1,4 @@
-import unittest, defines, macros
+import unittest, assigns, macros
 
 macro match(val: untyped, branches: varargs[untyped]): untyped =
   result = newEmptyNode()

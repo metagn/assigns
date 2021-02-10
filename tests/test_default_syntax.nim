@@ -1,4 +1,4 @@
-import unittest, defines
+import unittest, assigns
 
 test "basic def":
   def:

@@ -1,4 +1,4 @@
-import unittest, defines, macros
+import unittest, assigns, macros
 
 test "custom Result[T]":
   type Result[T] = object
@@ -8,21 +8,21 @@ test "custom Result[T]":
     else:
       error: ref Exception
 
-  macro define[T](lhs; rhs: Result[T], kind: static[DefineKind]): untyped =
+  macro assign[T](lhs; rhs: Result[T], kind: static[AssignKind]): untyped =
     let isCallCommandLen2 = lhs.kind in {nnkCall, nnkCommand} and lhs.len == 2
     if (isCallCommandLen2 and (lhs[0].eqIdent"ok" or lhs[0].eqIdent"Ok")) or
        (lhs.kind == nnkPrefix and lhs[0].eqIdent"?"):
         let tmp = genSym(nskLet, "tmpResult")
-        let asgn = openDefine(lhs[1], newDotExpr(tmp, ident"value"), kind)
+        let asgn = openAssign(lhs[1], newDotExpr(tmp, ident"value"), kind)
         result = quote do:
           let `tmp` = `rhs`
           if not `tmp`.success:
             raise `tmp`.error
           `asgn`
     elif isCallCommandLen2 and (lhs[0].eqIdent"err" or lhs[0].eqIdent"Err"):
-      result = openDefine(lhs[1], newDotExpr(rhs, ident"error"), kind)
+      result = openAssign(lhs[1], newDotExpr(rhs, ident"error"), kind)
     else:
-      result = defaultDefine(lhs, rhs, kind)
+      result = defaultAssign(lhs, rhs, kind)
 
   let success = Result[int](success: true, value: 5)
   Ok(a) := success
@@ -36,12 +36,12 @@ test "custom Result[T]":
 import options
 
 test "redefined for Option[T]":
-  macro define[T](lhs; rhs: Option[T], kind: static[DefineKind]): untyped =
+  macro assign[T](lhs; rhs: Option[T], kind: static[AssignKind]): untyped =
     if (lhs.kind in {nnkCall, nnkCommand} and lhs.len == 2 and (lhs[0].eqIdent"some" or lhs[0].eqIdent"Some")) or
        (lhs.kind == nnkPrefix and lhs[0].eqIdent"?"):
-      result = openDefine(lhs[1], newCall(bindSym"get", rhs), kind)
+      result = openAssign(lhs[1], newCall(bindSym"get", rhs), kind)
     else:
-      result = defaultDefine(lhs, rhs, kind)
+      result = defaultAssign(lhs, rhs, kind)
 
   let opt = some(5)
   ?a := opt
@@ -55,7 +55,7 @@ test "custom with convenience template for LinkedList[T]":
     leaf: T
     next: LinkedList[T]
   
-  implementDefine LinkedList:
+  implementAssign LinkedList:
     if lhs.kind == nnkBracket and lhs.len == 1 and lhs[0].kind == nnkInfix and lhs[0][0].eqIdent"|":
       newStmtList(open(lhs[0][1], newDotExpr(rhs, ident"leaf")), open(lhs[0][2], newDotExpr(rhs, ident"next")))
     else:

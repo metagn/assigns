@@ -1,4 +1,4 @@
-import unittest, defines/tupleindex
+import unittest, assigns/tupleindex
 
 test "backwards index tuples":
   let a = (1, 2, 3)
