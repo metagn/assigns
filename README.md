@@ -2,9 +2,8 @@
 
 Disclaimer: [fusion/matching](https://nim-lang.github.io/fusion/src/fusion/matching.html) has
 passed this library by a fair amount, this package probably has little need for new changes.
-I would tag this as "abandoned" or "archived" in Nimble if it was possible.
-If you want new changes, you can fork and even republish on Nimble by linking
-the Nimble package to your repository.
+Feel free to interact with the repo for now, but this package might be naturally abandoned
+over time.
 
 Macros to allow custom/complicated assignment for Nim. Allows for overloading with typed macros.
 
