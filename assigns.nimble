@@ -1,7 +1,7 @@
 # Package
 
 version       = "0.6.0"
-author        = "hlaaftana"
+author        = "metagn"
 description   = "syntax sugar for assignments"
 license       = "MIT"
 srcDir        = "src"
@@ -14,7 +14,7 @@ import os
 
 task docs, "build docs":
   const
-    gitUrl = "https://github.com/hlaaftana/assigns"
+    gitUrl = "https://github.com/metagn/assigns"
     gitCommit = "master"
     gitDevel = "master" 
   for f in walkDirRec("src"):

@@ -1,5 +1,5 @@
 ## The routines in this module are copied from
-## `sliceutils/tuples <https://hlaaftana.github.io/sliceutils/tuples.html>`_
+## `sliceutils/tuples <https://metagn.github.io/sliceutils/tuples.html>`_
 ## to provide support for tuple spreading.
 
 import macros, typetraits

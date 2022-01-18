@@ -94,8 +94,8 @@
 ## The best way to make tuple spreading (``(a, *b, c) := d``) generic that I have come up with seems to be to
 ## generate something like ``a = d[0]; b = d[1..^2]; c = d[^1]``. This is why the `tupleindex <tupleindex.html>`_
 ## module is imported and exported in this module, to provide the required routines for tuple spreading.
-## However, if my package `sliceutils <https://github.com/hlaaftana/sliceutils>`_ is installed, it will instead
-## import and export `sliceutils/tuples <https://hlaaftana.github.io/sliceutils/tuples.html>`_ which has our required
+## However, if my package `sliceutils <https://github.com/metagn/sliceutils>`_ is installed, it will instead
+## import and export `sliceutils/tuples <https://metagn.github.io/sliceutils/tuples.html>`_ which has our required
 ## routines. I have not made `sliceutils` a dependency because there are 4 other modules within it and some routines
 ## that we don't need in `sliceutils/tuples` as well, not to mention that `sliceutils` does not support versions
 ## below 1.4. I hope that if you are going to be using both modules, the extra inclusion of the file `tupleindex`

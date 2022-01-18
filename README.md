@@ -7,7 +7,7 @@ over time.
 
 Macros to allow custom/complicated assignment for Nim. Allows for overloading with typed macros.
 
-Examples in [docs](https://hlaaftana.github.io/assigns/assigns.html#examples) and in tests.
+Examples in [docs](https://metagn.github.io/assigns/assigns.html#examples) and in tests.
 
 Not implemented:
 
