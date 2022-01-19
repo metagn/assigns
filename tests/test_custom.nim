@@ -30,7 +30,7 @@ test "custom Result[T]":
   ?a2 := success
   check a2 == 5
   let error = Result[void](success: false, error: newException(Exception, "error"))
-  def: Err b = error
+  def: Err(b) = error
   check b.msg == "error"
 
 import options

@@ -312,6 +312,17 @@ template implementAssignExported*(T; body) {.dirty.} =
     template default(a, b: NimNode, k: static[AssignKind]): NimNode {.used.} = defaultAssign(a, b, k)
     body
 
+proc doDef(a: NimNode): NimNode =
+  var
+    a = a
+    kind = akLet
+  if a.eqIdent"_": return newEmptyNode()
+  if a.kind in nnkCallKinds and a[0].eqIdent"mut":
+    a = a[1]
+    kind = akVar
+  let (lhs, rhs) = if a.kind == nnkInfix: (a[1], a[2]) else: (a[0], a[1])
+  result = openAssign(lhs, rhs)
+
 macro def*(assignments): untyped =
   ## Goes through each assignment expression in `assignments` and processes them into definitions.
   runnableExamples:
@@ -322,12 +333,9 @@ macro def*(assignments): untyped =
   if assignments.kind == nnkStmtList:
     result = newStmtList()
     for a in assignments:
-      let (lhs, rhs) = if a.kind == nnkInfix: (a[1], a[2]) else: (a[0], a[1])
-      result.add(openAssign(lhs, rhs))
+      result.add(doDef(a))
   else:
-    let a = assignments
-    let (lhs, rhs) = if a.kind == nnkInfix: (a[1], a[2]) else: (a[0], a[1])
-    result = openAssign(lhs, rhs)
+    result = doDef(assignments)
 
 macro def*(assignments, body): untyped =
   ## Goes through each assignment expression in `assignments` and processes them into definitions.
@@ -345,12 +353,9 @@ macro def*(assignments, body): untyped =
   result = newStmtList()
   if assignments.kind == nnkStmtList:
     for a in assignments:
-      let (lhs, rhs) = if a.kind == nnkInfix: (a[1], a[2]) else: (a[0], a[1])
-      result.add(openAssign(lhs, rhs))
+      result.add(doDef(a))
   else:
-    let a = assignments
-    let (lhs, rhs) = if a.kind == nnkInfix: (a[1], a[2]) else: (a[0], a[1])
-    result.add(openAssign(lhs, rhs))
+    result.add(doDef(assignments))
   result.add(body)
   result = newBlockStmt(result)
 
