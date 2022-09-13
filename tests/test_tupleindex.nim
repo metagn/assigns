@@ -1,4 +1,9 @@
-import unittest, assigns/tupleindex
+when (compiles do: import nimbleutils/bridge):
+  import nimbleutils/bridge
+else:
+  import unittest
+
+import assigns/tupleindex
 
 test "backwards index tuples":
   let a = (1, 2, 3)

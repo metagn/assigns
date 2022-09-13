@@ -17,7 +17,7 @@ when (NimMajor, NimMinor) >= (1, 4):
 
 task docs, "build docs for all modules":
   when declared(buildDocs):
-    buildDocs(gitUrl = "https://github.com/metagn/marggers", extraOptions = "--path:src")
+    buildDocs(gitUrl = "https://github.com/metagn/assigns", extraOptions = "--path:src")
   else:
     # old
     const
@@ -32,6 +32,6 @@ task docs, "build docs for all modules":
 
 task tests, "run tests for multiple backends":
   when declared(runTests):
-    runTests(backends = {c, js}, optionCombos = @[""])
+    runTests(backends = {c, js, nims}, optionCombos = @[""])
   else:
     echo "tests task not implemented, need nimbleutils"

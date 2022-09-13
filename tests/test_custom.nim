@@ -1,4 +1,9 @@
-import unittest, assigns, macros
+when (compiles do: import nimbleutils/bridge):
+  import nimbleutils/bridge
+else:
+  import unittest
+
+import assigns, macros
 
 test "custom Result[T]":
   type Result[T] = object

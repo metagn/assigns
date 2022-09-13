@@ -1,4 +1,9 @@
-import unittest, assigns
+when (compiles do: import nimbleutils/bridge):
+  import nimbleutils/bridge
+else:
+  import unittest
+
+import assigns
 
 test "basic def":
   def:
@@ -42,12 +47,13 @@ test "basic :=":
   check `case` == 4
 
 test "pragmas":
-  proc foo: int =
-    x {.global.} := var 0
-    inc x
-    result = x
-  check foo() == 1
-  check foo() == 2
+  when not defined(nimscript):
+    proc foo: int =
+      x {.global.} := var 0
+      inc x
+      result = x
+    check foo() == 1
+    check foo() == 2
 
 test "more var":
   mut((a, b, c)) := (1, 2, 3)
