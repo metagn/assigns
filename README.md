@@ -1,13 +1,10 @@
 # assigns
 
-Disclaimer: [fusion/matching](https://nim-lang.github.io/fusion/src/fusion/matching.html) has
-passed this library by a fair amount, this package probably has little need for new changes.
-Feel free to interact with the repo for now, but this package might be naturally abandoned
-over time.
+Disclaimer: [fusion/matching](https://nim-lang.github.io/fusion/src/fusion/matching.html) also exists.
 
 Macros to allow custom/complicated assignment for Nim. Allows for overloading with typed macros.
 
-Examples in [docs](https://metagn.github.io/assigns/assigns.html#examples) and in tests.
+Examples in [docs](https://metagn.github.io/assigns/docs/assigns.html#examples) and in tests.
 
 Not implemented:
 
