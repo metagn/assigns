@@ -91,7 +91,7 @@
 ## ==================
 ## 
 ## A large and important feature in this package is that you can overload
-## definitions for custom types by importing `assigns/impl <assigns/impl.html>`_.
+## definitions for custom types by importing `assigns/impl <impl.html>`_.
 ## The `assign` macro in this module is overloadable, and the `openAssign` template creates a
 ## NimNode that calls a forced open symbol of `assign` with the AST of the left hand side,
 ## AST of the right hand side, and the flag of whether or not it is a `let`, `var`, or mutating
