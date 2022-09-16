@@ -17,6 +17,8 @@ type
     ## error for failed equality checks in assignments
   AssignContainsError* = object of AssignError
     ## error for failed contains checks in assignments
+  AssignBoundError* = object of AssignError
+    ## error for failed bound checks in assignments
 
 template assignCheckEqual*(a, b): untyped =
   ## template for equality checks in assignments
@@ -47,6 +49,26 @@ template assignCheckNotContains*(a, b): untyped =
   ## template for non-equality checks in assignments
   if a in b:
     raise newException(AssignContainsError, "did not expect " & astToStr(a) & " to be in " & astToStr(b))
+
+template assignCheckLess*(a, b): untyped =
+  ## template for non-equality checks in assignments
+  if not (a < b):
+    raise newException(AssignBoundError, "expected " & astToStr(a) & " to be less than " & astToStr(b))
+
+template assignCheckLessEqual*(a, b): untyped =
+  ## template for non-equality checks in assignments
+  if not (a <= b):
+    raise newException(AssignBoundError, "expected " & astToStr(a) & " to be less than or equal to " & astToStr(b))
+
+template assignCheckGreater*(a, b): untyped =
+  ## template for non-equality checks in assignments
+  if not (a > b):
+    raise newException(AssignBoundError, "expected " & astToStr(a) & " to be greater than " & astToStr(b))
+
+template assignCheckGreaterEqual*(a, b): untyped =
+  ## template for non-equality checks in assignments
+  if not (a >= b):
+    raise newException(AssignBoundError, "expected " & astToStr(a) & " to be greater than or equal to " & astToStr(b))
 
 template openAssign*(lhs, rhs: NimNode, ak: AssignKind = akLet): NimNode =
   ## Creates a node that calls an open symbol `assign` with `lhs` and `rhs`.
@@ -125,6 +147,14 @@ proc defaultAssign*(lhs, rhs: NimNode, kind = akLet): NimNode =
       result = newCall(bindSym"assignCheckEqual", rhs, lhs[1])
     of "!=":
       result = newCall(bindSym"assignCheckNotEqual", rhs, lhs[1])
+    of "<":
+      result = newCall(bindSym"assignCheckLess", rhs, lhs[1])
+    of "<=":
+      result = newCall(bindSym"assignCheckLessEqual", rhs, lhs[1])
+    of ">":
+      result = newCall(bindSym"assignCheckGreater", rhs, lhs[1])
+    of ">=":
+      result = newCall(bindSym"assignCheckGreaterEqual", rhs, lhs[1])
     of "is":
       result = newCall(bindSym"assignCheckType", rhs, lhs[1])
     of "isnot":
