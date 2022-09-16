@@ -3,7 +3,7 @@ when (compiles do: import nimbleutils/bridge):
 else:
   import unittest
 
-import assigns, macros
+import assigns, assigns/impl, macros
 
 test "custom Result[T]":
   type Result[T] = object
@@ -13,7 +13,7 @@ test "custom Result[T]":
     else:
       error: ref Exception
 
-  macro assign[T](lhs; rhs: Result[T], kind: static[AssignKind]): untyped =
+  macro assign[T](lhs; rhs: Result[T], kind: static AssignKind): untyped =
     let isCallCommandLen2 = lhs.kind in {nnkCall, nnkCommand} and lhs.len == 2
     if (isCallCommandLen2 and (lhs[0].eqIdent"ok" or lhs[0].eqIdent"Ok")) or
        (lhs.kind == nnkPrefix and lhs[0].eqIdent"?"):
@@ -41,7 +41,7 @@ test "custom Result[T]":
 import options
 
 test "redefined for Option[T]":
-  macro assign[T](lhs; rhs: Option[T], kind: static[AssignKind]): untyped =
+  macro assign[T](lhs; rhs: Option[T], kind: static AssignKind): untyped =
     if (lhs.kind in {nnkCall, nnkCommand} and lhs.len == 2 and (lhs[0].eqIdent"some" or lhs[0].eqIdent"Some")) or
        (lhs.kind == nnkPrefix and lhs[0].eqIdent"?"):
       result = openAssign(lhs[1], newCall(bindSym"get", rhs), kind)

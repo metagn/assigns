@@ -5,19 +5,19 @@ else:
 
 import assigns
 
-test ":=??":
+test ":=?":
   var executed1 = false
-  (a, b) :=?? (1, 2):
+  (a, b) :=? (1, 2):
     check a == 1
     check b == 2
     executed1 = true
   check executed1
   
-  (a, b) :=?? 3:
+  (_, 3) :=? (1, 2):
     check false
   
   var executed2 = false
-  (a, b) :=?? (1, 2):
+  (a, b) :=? (1, 2):
     check a == 1
     check b == 2
     executed2 = true
@@ -26,23 +26,22 @@ test ":=??":
   check executed2
   
   var executed3 = false
-  (a, b) :=?? 3:
+  (_, 3) :=? (1, 2):
     check false
   else:
     executed3 = true
   check executed3
 
-test "::=??":
+test "::=?":
   var a, b: int
-  check (a, b) ::=?? (1, 2)
+  check ^(a, b) :=? (1, 2)
 
-  check not ((a, b) ::=?? 3)
-  check not ((a, c) ::=?? (1, 2))
+  check not (^(a, 3) :=? (1, 2))
   
   a = 0
   b = 0
   var executed2 = false
-  (a, b) ::=?? (1, 2):
+  (^a, ^b) :=? (1, 2):
     executed2 = true
   else:
     check false
@@ -51,7 +50,7 @@ test "::=??":
   check executed2
   
   var executed3 = false
-  (a, b) ::=?? 3:
+  (^a, 3) :=? (1, 2):
     check false
   else:
     executed3 = true

@@ -3,30 +3,7 @@ when (compiles do: import nimbleutils/bridge):
 else:
   import unittest
 
-import assigns, macros
-
-macro match(val: untyped, branches: varargs[untyped]): untyped =
-  result = newEmptyNode()
-  for i in countdown(branches.len - 1, 0):
-    let b = branches[i]
-    case b.kind
-    of nnkElse:
-      result = b[0]
-    of nnkElifBranch:
-      let cond = b[0]
-      let bod = b[1]
-      result = quote do:
-        if `cond`:
-          `bod`
-        else:
-          `result`
-    of nnkOfBranch:
-      let bod = b[^1]
-      for vi in 0..<b.len - 1:
-        let v = b[vi]
-        result = getAst(`:=?`(v, val, bod, result))
-    else:
-      error("invalid branch for match", b)
+import assigns
 
 import options
 

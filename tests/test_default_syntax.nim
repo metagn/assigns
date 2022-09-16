@@ -8,7 +8,7 @@ import assigns
 test "basic def":
   def:
     a = 3
-    mut x = 5
+    @x = 5
     y = var 5
   
   check:
@@ -32,7 +32,7 @@ test "def with scoped block":
 
 test "basic :=":
   a := 3
-  mut(x) := 5
+  @x := 5
   y := var 5
 
   check:
@@ -56,7 +56,7 @@ test "pragmas":
     check foo() == 2
 
 test "more var":
-  mut((a, b, c)) := (1, 2, 3)
+  @(a, b, c) := (1, 2, 3)
   (a, b, c) = (6, 5, 4)
   check (a, b, c) == (6, 5, 4)
   (d, e, f) := var (1, 2, 3)
@@ -107,7 +107,7 @@ test "as":
   check f == (1, 2)
 
 test "combo":
-  (a, Some(mut b), mut c) := (1, some(2), 3)
+  (a, Some(@b), @c) := (1, some(2), 3)
   check (a, b, c) == (1, 2, 3)
   c = 4
   check c == 4
