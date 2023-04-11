@@ -107,7 +107,7 @@ test "match with :=? works":
 
   var x: string
   match range[1..5](4):
-  of 1, 2, 3: x = "below or equal to three"
+  of 1, in (2..3): x = "below or equal to three"
   of 4, 5: x = "above three"
 
   check x == "above three"
