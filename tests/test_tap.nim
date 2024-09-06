@@ -12,7 +12,7 @@ test "basic test":
     s[i] = i + 1
   check x == @[1, 2, 3, 4, 5]
   var s: seq[int]
-  tap a := 5, i in 1 .. a, filter i mod 2 != 0:
+  tap a = 5, i in 1 .. a, filter i mod 2 != 0:
     s.add(i)
   check s == @[1, 3, 5]
 
@@ -30,6 +30,13 @@ test "matching":
   let y = none(int)
   branch = 0
   tap some(a) :=? y:
+    branch = 1
+    check a == 5
+  else:
+    branch = 2
+  check branch == 2
+  branch = 0
+  tap some(a) =? y:
     branch = 1
     check a == 5
   else:

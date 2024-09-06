@@ -20,15 +20,28 @@ type
   AssignBoundError* = object of AssignError
     ## error for failed bound checks in assignments
 
+template assignCheckDefaultFail*(body) =
+  body
+
+template assignCheckFail*(body) =
+  ## if `assignCheckBreakpoint` is declared, calls it,
+  ## otherwise falls back to `body`
+  when declared(assignCheckBreakpoint):
+    assignCheckBreakpoint(body)
+  else:
+    body
+
 template assignCheckEqual*(a, b): untyped =
   ## template for equality checks in assignments
   if a != b:
-    raise newException(AssignEqualityError, "expected " & astToStr(b) & ", got " & astToStr(a))
+    assignCheckFail:
+      raise newException(AssignEqualityError, "expected " & astToStr(b) & ", got " & astToStr(a))
 
 template assignCheckNotEqual*(a, b): untyped =
   ## template for non-equality checks in assignments
   if a == b:
-    raise newException(AssignEqualityError, "did not expect " & astToStr(b) & ", got " & astToStr(a))
+    assignCheckFail:
+      raise newException(AssignEqualityError, "did not expect " & astToStr(b) & ", got " & astToStr(a))
 
 template assignCheckType*(a, b): untyped =
   ## template for type checks in assignments
@@ -43,32 +56,38 @@ template assignCheckNotType*(a, b): untyped =
 template assignCheckContains*(a, b): untyped =
   ## template for equality checks in assignments
   if a notin b:
-    raise newException(AssignContainsError, "expected " & astToStr(a) & " to be in " & astToStr(b))
+    assignCheckFail:
+      raise newException(AssignContainsError, "expected " & astToStr(a) & " to be in " & astToStr(b))
 
 template assignCheckNotContains*(a, b): untyped =
   ## template for non-equality checks in assignments
   if a in b:
-    raise newException(AssignContainsError, "did not expect " & astToStr(a) & " to be in " & astToStr(b))
+    assignCheckFail:
+      raise newException(AssignContainsError, "did not expect " & astToStr(a) & " to be in " & astToStr(b))
 
 template assignCheckLess*(a, b): untyped =
   ## template for non-equality checks in assignments
   if not (a < b):
-    raise newException(AssignBoundError, "expected " & astToStr(a) & " to be less than " & astToStr(b))
+    assignCheckFail:
+      raise newException(AssignBoundError, "expected " & astToStr(a) & " to be less than " & astToStr(b))
 
 template assignCheckLessEqual*(a, b): untyped =
   ## template for non-equality checks in assignments
   if not (a <= b):
-    raise newException(AssignBoundError, "expected " & astToStr(a) & " to be less than or equal to " & astToStr(b))
+    assignCheckFail:
+      raise newException(AssignBoundError, "expected " & astToStr(a) & " to be less than or equal to " & astToStr(b))
 
 template assignCheckGreater*(a, b): untyped =
   ## template for non-equality checks in assignments
   if not (a > b):
-    raise newException(AssignBoundError, "expected " & astToStr(a) & " to be greater than " & astToStr(b))
+    assignCheckFail:
+      raise newException(AssignBoundError, "expected " & astToStr(a) & " to be greater than " & astToStr(b))
 
 template assignCheckGreaterEqual*(a, b): untyped =
   ## template for non-equality checks in assignments
   if not (a >= b):
-    raise newException(AssignBoundError, "expected " & astToStr(a) & " to be greater than or equal to " & astToStr(b))
+    assignCheckFail:
+      raise newException(AssignBoundError, "expected " & astToStr(a) & " to be greater than or equal to " & astToStr(b))
 
 template openAssign*(lhs, rhs: NimNode, ak: AssignKind = akLet): NimNode =
   ## Creates a node that calls an open symbol `assign` with `lhs` and `rhs`.
@@ -205,7 +224,8 @@ when not defined(assignsDisableOptionAssign):
   template assignCheckOption*(a): untyped =
     ## template for equality checks in assignments
     if not a.isSome:
-      raise newException(AssignOptionError, "option " & astToStr(a) & " was not Some")
+      assignCheckFail: # this will generate `break` for `tap`
+        raise newException(AssignOptionError, "option " & astToStr(a) & " was not Some")
 
   macro assign*[T](lhs; rhs: Option[T], kind: static AssignKind = akLet): untyped =
     ## The library's builtin overload of `assign` for `Option[T]`.
@@ -241,7 +261,7 @@ template implementAssign*(T; body) {.dirty.} =
       LinkedList[int](leaf: 2, next:
         LinkedList[int](leaf: 3, next: nil)))
     
-    import ./syntax
+    import assigns/syntax
     x | [y | [z | _]] := a
     doAssert (x, y, z) == (1, 2, 3)
   macro assign(lhs; rhs: T, kind: static AssignKind): untyped =

@@ -39,3 +39,38 @@ test "naive match works":
     fizzbuzz(4) == "4"
     fizzbuzz(5) == "Buzz"
     fizzbuzz(15) == "FizzBuzz"
+  
+  proc flatMap[T](x: Option[Option[T]]): Option[T] =
+    match x:
+    of Some(Some(val)):
+      result = some(val)
+    else:
+      result = none(T)
+
+  when not defined(assignsMatchBreakpoint):
+    proc flatMapRec[T](x: Option[T]): auto =
+      match x:
+      of Some(val):
+        when val is Option:
+          result = flatMapRec(val)
+        else:
+          result = some(val)
+      else:
+        result = none(typeof(flatMapRec(x).get))
+  
+  check:
+    flatMap(some some 3) == some(3)
+    flatMap(some none int) == none(int)
+    flatMap(none(Option[int])) == none(int)
+    flatMap(some some some 3) == some(some 3)
+    flatMap(some some none int) == some none(int)
+    flatMap(some none(Option[int])) == none(Option[int])
+
+  when not defined(assignsMatchBreakpoint):
+    check:
+      flatMapRec(some some 3) == some(3)
+      flatMapRec(some none int) == none(int)
+      flatMapRec(none(int)) == none(int)
+      flatMapRec(some some some 3) == some(3)
+      flatMapRec(some some none int) == none(int)
+      flatMapRec(some none(Option[int])) == none(int)

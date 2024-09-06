@@ -83,14 +83,13 @@ template `:=?`*(a, b, body): untyped =
   ##  let a = some(3)
   ##  some(n) :=? a:
   ##    doAssert n == 3
-  var assignFinished = false
-  try:
-    a := b
-    assignFinished = true
-    body
-  except AssignError:
-    if assignFinished:
-      raise
+  block match:
+    template assignCheckBreakpoint(checkBody) {.redefine, used.} =
+      break match
+    `a` := `b`
+    template assignCheckBreakpoint(checkBody) {.redefine, used.} =
+      checkBody
+    `body`
 
 macro `:=?`*(a, b, body, elseBranch): untyped =
   ## Executes `body` if ``a ::= b`` doesn't give a runtime error,
@@ -107,17 +106,42 @@ macro `:=?`*(a, b, body, elseBranch): untyped =
   ##  else:
   ##    doAssert false
   let elseExpr = if elseBranch.kind == nnkElse: elseBranch[0] else: elseBranch
-  result = quote:
-    var assignFinished = false
-    try:
-      `a` := `b`
-      assignFinished = true
-      `body`
-    except AssignError:
-      if assignFinished:
-        raise
-      else:
-        `elseExpr`
+  when not defined(assignsMatchBreakpoint):
+    result = quote:
+      var assignFinished = false
+      try:
+        `a` := `b`
+        assignFinished = true
+        `body`
+      except AssignError:
+        if assignFinished:
+          raise
+        else:
+          `elseExpr`
+  else:
+    result = quote:
+      const isExpr = compiles:
+        let x = `body`
+      when isExpr:
+        var res: typeof(`body`)
+      block match:
+        block success:
+          template assignCheckBreakpoint(checkBody) {.redefine, used.} =
+            break success
+          `a` := `b`
+          template assignCheckBreakpoint(checkBody) {.redefine, used.} =
+            checkBody
+          when isExpr:
+            res = `body`
+          else:
+            `body`
+          break match
+        when isExpr:
+          res = `elseExpr`
+        else:
+          `elseExpr`
+      when isExpr:
+        res
 
 macro unpackArgs*(args, routine): untyped =
   ## Injects unpacking assignments into the body of a given routine.

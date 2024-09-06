@@ -102,7 +102,25 @@ proc lhsToVal(n: NimNode, context = None): NimNode =
   else:
     result = nil
 
-proc transformTap(e: NimNode, body, elseBody: NimNode): NimNode =
+proc breakingBreakpoint(label: NimNode): NimNode =
+  # template assignCheckBreakpoint(body) = break tapSuccess
+  newProc(
+    name = ident"assignCheckBreakpoint",
+    params = [newEmptyNode(), newIdentDefs(ident"body", ident"untyped")],
+    body = newTree(nnkBreakStmt, label),
+    procType = nnkTemplateDef,
+    pragmas = newTree(nnkPragma, ident"redefine", ident"used"))
+
+proc defaultBreakpoint(): NimNode =
+  # template assignCheckBreakpoint(body) = body
+  newProc(
+    name = ident"assignCheckBreakpoint",
+    params = [newEmptyNode(), newIdentDefs(ident"body", ident"untyped")],
+    body = ident"body",
+    procType = nnkTemplateDef,
+    pragmas = newTree(nnkPragma, ident"redefine", ident"used"))
+
+proc transformTap(e: NimNode, body, elseBody, successLabel: NimNode): NimNode =
   if e.kind in nnkCallKinds and e[0].eqIdent"in" and e.len == 3:
     let forVal = e[1]
     let forValSimple = trySimpleForVar(forVal)
@@ -123,42 +141,44 @@ proc transformTap(e: NimNode, body, elseBody: NimNode): NimNode =
       result.add(body)
   elif e.kind in nnkCallKinds and e[0].eqIdent"result" and e.len == 2:
     var val = e[1]
-    if val.kind == nnkAsgn:
+    if val.kind in {nnkAsgn, nnkExprEqExpr}:
       let a = val[0]
       let b = val[1]
       val = newNimNode(nnkInfix, val)
       val.add(ident":=")
       val.add(a)
       val.add(b)
-    if val.kind in nnkCallKinds and (val[0].eqIdent":=" or val[0].eqIdent":=?"):
+    if val.kind in nnkCallKinds and (val[0].eqIdent":=" or val[0].eqIdent":=?" or val[0].eqIdent"=?"):
       let lhsVal = lhsToVal(val[1])
       if lhsVal.isNil:
         error("cannot get result value from " & val[1].repr, val[1])
       else:
         val[1] = newTree(nnkVarTy, val[1])
-        result = newStmtList(transformTap(val, body, elseBody), lhsVal)
+        result = newStmtList(transformTap(val, body, elseBody, successLabel), lhsVal)
     else:
       result = newStmtList(body, val)
-  elif e.kind in nnkCallKinds and e[0].eqIdent":=?" and e.len == 3:
-    result = copy e
-    result.add body
-    if not elseBody.isNil:
-      result.add elseBody
   elif e.kind in nnkCallKinds and e[0].eqIdent"filter" and e.len == 2:
     result = newNimNode(nnkIfStmt, e)
     var branch = newNimNode(nnkElifBranch, e[1])
     branch.add(e[1])
     branch.add(body)
     result.add(branch)
-    if false: # else: continue
-      branch = newNimNode(nnkElse, e[1])
-      branch.add(newNimNode(nnkContinueStmt, e[1]))
-      result.add branch
-  elif e.kind == nnkAsgn:
+  elif e.kind in {nnkAsgn, nnkExprEqExpr}:
     result = newNimNode(nnkInfix, e)
     result.add(ident":=")
     result.add(e[0])
     result.add(e[1])
+    result = newStmtList(result, body)
+  elif e.kind in nnkCallKinds and (e[0].eqIdent":=?" or e[0].eqIdent"=?") and e.len == 3:
+    result = newNimNode(nnkInfix, e)
+    result.add(ident":=")
+    result.add(e[1])
+    result.add(e[2])
+    result = newStmtList(breakingBreakpoint(successLabel), result, defaultBreakpoint(), body)
+  elif e.kind == nnkStmtList:
+    result = body
+    for i in countdown(e.len - 1, 0):
+      result = transformTap(e[i], result, elseBody, successLabel)
   else:
     result = newStmtList(e, body)
 
@@ -193,15 +213,22 @@ proc tapImpl(nodes: NimNode): NimNode =
       elseBody.insert(0, value)
       dec finalIndex
       value = nodes[finalIndex]
+  let topLabel = genSym(nskLabel, "tap")
+  let successLabel = if elseBody.isNil: topLabel else: genSym(nskLabel, "tapSuccess")
   result = value
   for i in countdown(finalIndex - 1, 0):
-    result = transformTap(nodes[i], result, elseBody)
+    result = transformTap(nodes[i], result, elseBody, successLabel)
+  if not elseBody.isNil:
+    result = newBlockStmt(successLabel,
+      newStmtList(
+        result,
+        newTree(nnkBreakStmt, topLabel)))
+    result = newStmtList(result, elseBody)
+  result = newBlockStmt(topLabel, result)
   if exceptBranches.len != 0 or not finallyBody.isNil:
     result = newTree(nnkTryStmt, result)
     for x in exceptBranches: result.add(x)
     if not finallyBody.isNil: result.add(finallyBody)
-  let label = genSym(nskLabel, "tap")
-  result = newBlockStmt(label, result)
 
 macro tap*(nodes: varargs[untyped]): untyped =
   result = tapImpl(nodes)

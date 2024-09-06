@@ -98,5 +98,5 @@
 ## assignment. You can use the `implementAssign` and `implementAssignExported` templates as a
 ## shorthand for declaring these overloads.
 
-import assigns/[syntax, tupleindex, impl]
-export syntax, tupleindex, impl.assign
+import assigns/[syntax, tupleindex, impl, tap]
+export syntax, tupleindex, impl.assign, tap
