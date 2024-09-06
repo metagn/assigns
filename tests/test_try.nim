@@ -59,10 +59,16 @@ test "::=?":
 import options
 test ":=? based on option":
   proc foo(x: Option[int]): int =
-    some(n) :=? x:
-      n + 1
+    when defined(assignsMatchBreakpoint):
+      some(n) :=? x:
+        result = n + 1
+      else:
+        result = 0
     else:
-      0
+      some(n) :=? x:
+        n + 1
+      else:
+        0
   
   check foo(some(0)) == 1
   check foo(none(int)) == 0
