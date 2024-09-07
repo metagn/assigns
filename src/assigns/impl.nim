@@ -21,6 +21,8 @@ type
     ## error for failed bound checks in assignments
 
 template assignCheckDefaultFail*(body) =
+  ## default behavior for assignment check failing with expression `body`,
+  ## which is just to run `body`
   body
 
 template assignCheckFail*(body) =

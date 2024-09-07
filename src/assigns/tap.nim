@@ -52,8 +52,10 @@ proc lhsToVal(n: NimNode, context = None): NimNode =
   of nnkPrefix:
     let a = $n[0]
     case a
-    of "@", "^", "==":
+    of "@":
       result = lhsToVal(n[1])
+    of "^", "==":
+      result = n[1]
     of "*", "..", "...":
       if context in {Tuple, Array}:
         result = newTree(nnkDerefExpr, n[1])
@@ -231,4 +233,44 @@ proc tapImpl(nodes: NimNode): NimNode =
     if not finallyBody.isNil: result.add(finallyBody)
 
 macro tap*(nodes: varargs[untyped]): untyped =
+  ## Processes a series of "assignment" expressions, applying them in reverse
+  ## to the given body. `else`/`elif` and `except`/`finally` can also be given,
+  ## where `else`/`elif` triggers if any "matching" assignments fail,
+  ## and `except`/`finally` have the usual behavior.
+  ## 
+  ## An assignment expression can be one of:
+  ## * a normal assignment, of the form `a := b` or `a = b`;
+  ##   prepended to the body verbatim
+  ## * a matching assignment, of the form `a :=? b` or `a =? b`;
+  ##   prepends an assignment `a := b` and stops execution or
+  ##   jumps to `else` block if the assignment fails
+  ## * result assignment, of the form `result a` or `result a := b`;
+  ##   returns `a` as the value of the expression
+  ## * an iterator assignment, of the form `a in b`;
+  ##   wraps the body in `for a in b: ...` , allowing complex assignments
+  ##   for `a`
+  ## * a filter, of the form `filter cond`;
+  ##   wraps the body in `if cond: ...` statement
+  ## * a list of other assignment expressions, as in `tap: a; b; c; ... do: ...`;
+  ##   applies assignments in reverse order
+  ## * any other statement; also prepended to the block verbatim
+  runnableExamples:
+    import assigns
+    let val = tap(a := 5): a + 1
+    var s: seq[int]
+    tap a := 5, i in 1 .. a, filter i mod 2 != 0:
+      s.add(i)
+    doAssert s == @[1, 3, 5]
+    doAssert val == 6
+    let x = tap(a := 5, result s := newSeq[int](a), i in 0 ..< a):
+      s[i] = i + 1
+    doAssert x == @[1, 2, 3, 4, 5]
+    var s2: seq[int]
+    tap:
+      a = 5
+      i in 1 .. a
+      filter i mod 2 != 0
+    do:
+      s2.add(i)
+    doAssert s2 == @[1, 3, 5]
   result = tapImpl(nodes)

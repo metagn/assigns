@@ -56,21 +56,27 @@ macro `:=`*(a, b): untyped =
   result = openAssign(a, b)
 
 template `:=?`*(a, b): bool =
-  ## Executes (!) ``a := b`` and returns false if it gives a runtime error.
-  ## Otherwise returns `true`.
+  ## Executes (!) ``a := b`` and returns false if the checks in the assignment
+  ## fail. Otherwise returns `true`.
   ## Note that the executed ``a := b`` will not have any
   ## affect on the scope of the following statements since
-  ## it uses a `try` statement.
+  ## it is in a `block` statement.
   runnableExamples:
     doAssert (a, b) :=? (1, 2)
     import options
     let a = none(int)
     doAssert not (some(n) :=? a)
-  try:
-    a := b
-    true
-  except AssignError:
-    false
+  block match:
+    var passed = false
+    block success:
+      template assignCheckBreakpoint(checkBody) {.redefine, used.} =
+        passed = false
+        break success
+      `a` := `b`
+      template assignCheckBreakpoint(checkBody) {.redefine, used.} =
+        checkBody
+      passed = true
+    passed
 
 template `:=?`*(a, b, body): untyped =
   ## Executes `body` if ``a := b`` doesn't give a runtime error.
@@ -92,9 +98,13 @@ template `:=?`*(a, b, body): untyped =
     `body`
 
 macro `:=?`*(a, b, body, elseBranch): untyped =
-  ## Executes `body` if ``a ::= b`` doesn't give a runtime error,
+  ## Executes `body` if ``a := b`` doesn't fail any checks,
   ## otherwise executes `elseBranch`.
   ## `body` will be in the same scope as the definition ``a := b``.
+  ## 
+  ## Uses `break` instead of exceptions for handling check failures unilke
+  ## `tryAssign`. Due to Nim limitations, this means this cannot be used
+  ## as an expression and must be a statement.
   ##
   ## Example:
   ##
@@ -106,42 +116,107 @@ macro `:=?`*(a, b, body, elseBranch): untyped =
   ##  else:
   ##    doAssert false
   let elseExpr = if elseBranch.kind == nnkElse: elseBranch[0] else: elseBranch
-  when not defined(assignsMatchBreakpoint):
-    result = quote:
-      var assignFinished = false
-      try:
+  result = quote:
+    block match:
+      block success:
+        template assignCheckBreakpoint(checkBody) {.redefine, used.} =
+          break success
         `a` := `b`
-        assignFinished = true
+        template assignCheckBreakpoint(checkBody) {.redefine, used.} =
+          checkBody
         `body`
-      except AssignError:
-        if assignFinished:
-          raise
-        else:
-          `elseExpr`
+        break match
+      `elseExpr`
+
+macro tryAssign*(a, b, body, elseBranch): untyped =
+  ## Executes `body` if ``a := b`` doesn't fail any checks,
+  ## otherwise executes `elseBranch`.
+  ## `body` will be in the same scope as the definition ``a := b``.
+  ## 
+  ## Uses exceptions instead of `break` unlike `:=?`. This allows it to be
+  ## used as an expression but has a runtime cost.
+  ##
+  ## Example:
+  ##
+  ## .. code-block::nim
+  ##  import options
+  ##  let a = some(3)
+  ##  tryAssign some(n), a:
+  ##    doAssert n == 3
+  ##  else:
+  ##    doAssert false
+  let elseExpr = if elseBranch.kind == nnkElse: elseBranch[0] else: elseBranch
+  result = quote:
+    var assignFinished = false
+    try:
+      `a` := `b`
+      assignFinished = true
+      `body`
+    except AssignError:
+      if assignFinished:
+        raise
+      else:
+        `elseExpr`
+
+macro tryAssign*(a, b, c): untyped =
+  ## Version of `tryAssign` with either no `else` block, or with an infix
+  ## assignment as the first argument.
+  ## 
+  ## Example:
+  ##
+  ## .. code-block::nim
+  ##  import options
+  ##  let a = some(3)
+  ##  tryAssign some(n) := a: # or = a
+  ##    doAssert n == 3
+  ##  else:
+  ##    doAssert false
+  ## 
+  ##  tryAssign some(n), a:
+  ##    doAssert n == 3
+  if a.kind == nnkInfix and a[0].eqIdent":=":
+    let x = a[1]
+    let y = a[2]
+    result = getAst(tryAssign(x, y, b, c))
+  elif a.kind in {nnkAsgn, nnkExprEqExpr}:
+    let x = a[0]
+    let y = a[1]
+    result = getAst(tryAssign(x, y, b, c))
   else:
-    result = quote:
-      const isExpr = compiles:
-        let x = `body`
-      when isExpr:
-        var res: typeof(`body`)
-      block match:
-        block success:
-          template assignCheckBreakpoint(checkBody) {.redefine, used.} =
-            break success
-          `a` := `b`
-          template assignCheckBreakpoint(checkBody) {.redefine, used.} =
-            checkBody
-          when isExpr:
-            res = `body`
-          else:
-            `body`
-          break match
-        when isExpr:
-          res = `elseExpr`
-        else:
-          `elseExpr`
-      when isExpr:
-        res
+    let disc = newTree(nnkDiscardStmt, newEmptyNode())
+    result = getAst(tryAssign(a, b, c, disc))
+
+macro tryAssign*(a, b): untyped =
+  ## Version of `tryAssign` with an infix assignment as the first argument
+  ## and no `else` block.
+  ## 
+  ## Example:
+  ##
+  ## .. code-block::nim
+  ##  import options
+  ##  let a = some(3)
+  ##  tryAssign some(n) := a: # or = a
+  ##    doAssert n == 3
+  if a.kind == nnkInfix and a[0].eqIdent":=":
+    let x = a[1]
+    let y = a[2]
+    result = getAst(tryAssign(x, y, b))
+  elif a.kind in {nnkAsgn, nnkExprEqExpr}:
+    let x = a[0]
+    let y = a[1]
+    result = getAst(tryAssign(x, y, b))
+  else:
+    let t = newLit(true)
+    let f = newLit(false)
+    result = getAst(tryAssign(a, b, t, f))
+
+template tryAssign*(a): untyped =
+  ## Version of `tryAssign` that returns `false` if the assignment failed
+  ## and `true` otherwise.
+  ## Note that the executed ``a := b`` will not have any
+  ## affect on the scope of the following statements since
+  ## it is in a `try` statement.
+  tryAssign(a, true, false)
 
 macro unpackArgs*(args, routine): untyped =
   ## Injects unpacking assignments into the body of a given routine.
@@ -176,10 +251,45 @@ macro unpackArgs*(args, routine): untyped =
     error("unrecognized routine expression for unpackArgs with kind " & $routine.kind, routine)
 
 macro match*(val: untyped, branches: varargs[untyped]): untyped =
-  ## Naive pattern matching implementation based on `:=?`.
+  ## Naive pattern matching implementation based on `:=?`. Has the same
+  ## limitation as `:=?`, which is that it cannot be used as an expression.
   runnableExamples:
     proc fizzbuzz(n: int): string =
       match (n mod 3, n mod 5):
+      of (0, 0): result = "FizzBuzz"
+      of (0, _): result = "Fizz"
+      of (_, 0): result = "Buzz"
+      else: result = $n
+    for i in 1..100:
+      echo fizzbuzz(i)
+  result = newEmptyNode()
+  for i in countdown(branches.len - 1, 0):
+    let b = branches[i]
+    case b.kind
+    of nnkElse:
+      result = b[0]
+    of nnkElifBranch:
+      let cond = b[0]
+      let bod = b[1]
+      result = quote do:
+        if `cond`:
+          `bod`
+        else:
+          `result`
+    of nnkOfBranch:
+      let bod = b[^1]
+      for vi in 0..<b.len - 1:
+        let v = b[vi]
+        result = getAst(`:=?`(v, val, bod, result))
+    else:
+      error("invalid branch for match", b)
+
+macro tryMatch*(val: untyped, branches: varargs[untyped]): untyped =
+  ## Naive pattern matching implementation based on `tryAssign`. Has the same
+  ## caveat of `tryAssign`, which is that it uses exceptions.
+  runnableExamples:
+    proc fizzbuzz(n: int): string =
+      tryMatch (n mod 3, n mod 5):
       of (0, 0): "FizzBuzz"
       of (0, _): "Fizz"
       of (_, 0): "Buzz"
@@ -204,6 +314,6 @@ macro match*(val: untyped, branches: varargs[untyped]): untyped =
       let bod = b[^1]
       for vi in 0..<b.len - 1:
         let v = b[vi]
-        result = getAst(`:=?`(v, val, bod, result))
+        result = getAst(tryAssign(v, val, bod, result))
     else:
-      error("invalid branch for match", b)
+      error("invalid branch for tryMatch", b)

@@ -32,7 +32,34 @@ test ":=?":
     executed3 = true
   check executed3
 
-test "::=?":
+test "tryAssign":
+  var executed1 = false
+  tryAssign (a, b) := (1, 2):
+    check a == 1
+    check b == 2
+    executed1 = true
+  check executed1
+  
+  tryAssign (_, 3) := (1, 2):
+    check false
+  
+  var executed2 = false
+  tryAssign (a, b) := (1, 2):
+    check a == 1
+    check b == 2
+    executed2 = true
+  else:
+    check false
+  check executed2
+  
+  var executed3 = false
+  tryAssign (_, 3) := (1, 2):
+    check false
+  else:
+    executed3 = true
+  check executed3
+
+test "setting with :=?":
   var a, b: int
   check ^(a, b) :=? (1, 2)
 
@@ -56,22 +83,50 @@ test "::=?":
     executed3 = true
   check executed3
 
+test "setting with tryAssign":
+  var a, b: int
+  check tryAssign ^(a, b) := (1, 2)
+
+  check not tryAssign(^(a, 3) := (1, 2))
+  
+  a = 0
+  b = 0
+  var executed2 = false
+  tryAssign (^a, ^b) := (1, 2):
+    executed2 = true
+  else:
+    check false
+  check a == 1
+  check b == 2
+  check executed2
+  
+  var executed3 = false
+  tryAssign (^a, 3) := (1, 2):
+    check false
+  else:
+    executed3 = true
+  check executed3
+
 import options
 test ":=? based on option":
   proc foo(x: Option[int]): int =
-    when defined(assignsMatchBreakpoint):
-      some(n) :=? x:
-        result = n + 1
-      else:
-        result = 0
+    some(n) :=? x:
+      result = n + 1
     else:
-      some(n) :=? x:
-        n + 1
-      else:
-        0
+      result = 0
   
   check foo(some(0)) == 1
   check foo(none(int)) == 0
+
+test "tryAssign based on option":
+  proc fooTry(x: Option[int]): int =
+    tryAssign some(n) := x:
+      n + 1
+    else:
+      0
+  
+  check fooTry(some(0)) == 1
+  check fooTry(none(int)) == 0
 
 import macros
 
@@ -105,8 +160,8 @@ macro match(val: untyped, branches: varargs[untyped]): untyped =
 test "match with :=? works":
   proc isSomeYesOrNo[T](opt: Option[T]): string =
     match opt:
-    of Some(_): "yes"
-    else: "no"
+    of Some(_): result = "yes"
+    else: result = "no"
   
   check isSomeYesOrNo(some 3) == "yes"
   check isSomeYesOrNo(none int) == "no"
