@@ -121,3 +121,60 @@ test "try match works":
     flatMapRec(some some some 3) == some(3)
     flatMapRec(some some none int) == none(int)
     flatMapRec(some none(Option[int])) == none(int)
+
+test "matchInto works":
+  proc fizzbuzz(n: int): string =
+    matchInto result, (n mod 3, n mod 5):
+    of (0, 0): "FizzBuzz"
+    of (0, _): "Fizz"
+    of (_, 0): "Buzz"
+    else: $n
+  
+  check:
+    fizzbuzz(1) == "1"
+    fizzbuzz(2) == "2"
+    fizzbuzz(3) == "Fizz"
+    fizzbuzz(4) == "4"
+    fizzbuzz(5) == "Buzz"
+    fizzbuzz(15) == "FizzBuzz"
+  
+  proc flatMap[T](x: Option[Option[T]]): Option[T] =
+    matchInto result, x:
+    of Some(Some(val)):
+      some(val)
+    else:
+      none(T)
+
+  proc flatMapRec[T](x: Option[T]): auto =
+    matchInto result, x:
+    of Some(val):
+      when val is Option:
+        flatMapRec(val)
+      else:
+        some(val)
+    else:
+      none(typeof(flatMapRec(x).get))
+  
+  check:
+    flatMap(some some 3) == some(3)
+    flatMap(some none int) == none(int)
+    flatMap(none(Option[int])) == none(int)
+    flatMap(some some some 3) == some(some 3)
+    flatMap(some some none int) == some none(int)
+    flatMap(some none(Option[int])) == none(Option[int])
+
+  check:
+    flatMapRec(some some 3) == some(3)
+    flatMapRec(some none int) == none(int)
+    flatMapRec(none(int)) == none(int)
+    flatMapRec(some some some 3) == some(3)
+    flatMapRec(some some none int) == none(int)
+    flatMapRec(some none(Option[int])) == none(int)
+
+  # complex assignment:
+  var a, b: int
+  matchInto ^(a, 123, b), "abc":
+  of "abc": (1, 123, 2)
+  of "def": (3, 123, 4)
+
+  check (a, b) == (1, 2)

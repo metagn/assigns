@@ -317,3 +317,48 @@ macro tryMatch*(val: untyped, branches: varargs[untyped]): untyped =
         result = getAst(tryAssign(v, val, bod, result))
     else:
       error("invalid branch for tryMatch", b)
+
+macro matchInto*(adr, val: untyped, branches: varargs[untyped]): untyped =
+  ## Version of `match` which assigns the value of each branch body into `adr`.
+  ## Uses language level assignment by default, and `assign` if `^` is used.
+  runnableExamples:
+    proc fizzbuzz(n: int): string =
+      matchInto result, (n mod 3, n mod 5):
+      of (0, 0): "FizzBuzz"
+      of (0, _): "Fizz"
+      of (_, 0): "Buzz"
+      else: $n
+    for i in 1..100:
+      echo fizzbuzz(i)
+  result = newEmptyNode()
+  let complexLhs =
+    if adr.kind == nnkPrefix and adr[0].eqIdent"^":
+      adr[1]
+    else: nil
+  for i in countdown(branches.len - 1, 0):
+    let b = branches[i]
+    case b.kind
+    of nnkElse:
+      if complexLhs.isNil:
+        result = newAssignment(adr, b[0])
+      else:
+        result = openAssign(complexLhs, b[0], akSet)
+    of nnkElifBranch:
+      let cond = b[0]
+      let bod = b[1]
+      result = quote do:
+        if `cond`:
+          `adr` = `bod`
+        else:
+          `result`
+    of nnkOfBranch:
+      let bod =
+        if complexLhs.isNil:
+          newAssignment(adr, b[^1])
+        else:
+          openAssign(complexLhs, b[^1], akSet)
+      for vi in 0..<b.len - 1:
+        let v = b[vi]
+        result = getAst(`:=?`(v, val, bod, result))
+    else:
+      error("invalid branch for matchInto", b)
