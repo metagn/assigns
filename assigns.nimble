@@ -19,16 +19,7 @@ task docs, "build docs for all modules":
   when declared(buildDocs):
     buildDocs(gitUrl = "https://github.com/metagn/assigns", extraOptions = "--path:src")
   else:
-    # old
-    const
-      gitUrl = "https://github.com/metagn/assigns"
-      gitCommit = "master"
-      gitDevel = "master" 
-    for f in walkDirRec("src"):
-      exec "nim doc --git.url:" & gitUrl &
-        " --git.commit:" & gitCommit &
-        " --git.devel:" & gitDevel &
-        " --outdir:docs " & f
+    echo "docs task not implemented, need nimbleutils"
 
 task tests, "run tests for multiple backends":
   when declared(runTests):
